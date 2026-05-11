@@ -1,0 +1,360 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// 조직 구조: 법인 → 부서 → 팀
+// 소유 유닛: Unit 4 (Admin & Analytics)
+// ============================================================
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String   @db.VarChar(100)
+  code      String   @unique @db.VarChar(20)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  departments Department[]
+
+  @@map("organizations")
+}
+
+model Department {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  name           String   @db.VarChar(100)
+  code           String   @db.VarChar(20)
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  teams        Team[]
+
+  @@index([organizationId, isActive])
+  @@map("departments")
+}
+
+model Team {
+  id           String   @id @default(uuid())
+  departmentId String   @map("department_id")
+  name         String   @db.VarChar(100)
+  code         String   @db.VarChar(20)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  department Department @relation(fields: [departmentId], references: [id])
+  users      User[]
+
+  @@index([departmentId, isActive])
+  @@map("teams")
+}
+
+// ============================================================
+// 사용자
+// 소유 유닛: Unit 4 (Admin & Analytics)
+// ============================================================
+
+enum UserRole {
+  employee
+  agent_l1
+  agent_l2
+  admin
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique @db.VarChar(255)
+  passwordHash  String    @map("password_hash") @db.VarChar(255)
+  name          String    @db.VarChar(100)
+  role          UserRole  @default(employee)
+  teamId        String    @map("team_id")
+  isActive      Boolean   @default(true) @map("is_active")
+  loginAttempts Int       @default(0) @map("login_attempts")
+  lockedUntil   DateTime? @map("locked_until")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  team Team @relation(fields: [teamId], references: [id])
+
+  // Relations
+  requestedTickets  Ticket[]           @relation("TicketRequester")
+  assignedTickets   Ticket[]           @relation("TicketAssignee")
+  sentMessages      Message[]          @relation("MessageSender")
+  assignedTo        TicketAssignment[] @relation("AssignmentTarget")
+  assignedBy        TicketAssignment[] @relation("AssignmentAssigner")
+  suggestedFor      TicketAssignment[] @relation("AssignmentSuggested")
+  feedbacks         Feedback[]
+
+  @@index([teamId, role, isActive])
+  @@map("users")
+}
+
+// ============================================================
+// 티켓
+// 소유 유닛: Unit 2 (Intake & Routing)
+// ============================================================
+
+enum TicketStatus {
+  open
+  in_progress
+  resolved
+  closed
+}
+
+enum TicketPriority {
+  low
+  medium
+  high
+}
+
+enum CreatedVia {
+  web
+  email
+}
+
+enum ResolutionType {
+  ai_auto
+  agent_l1
+  agent_l2
+}
+
+model Ticket {
+  id              String          @id @default(uuid())
+  ticketNumber    String          @unique @map("ticket_number") @db.VarChar(20)
+  subject         String          @db.VarChar(500)
+  status          TicketStatus    @default(open)
+  priority        TicketPriority  @default(medium)
+  category        Json?           @db.JsonB // 문자열 배열, 최대 10개
+  requesterId     String          @map("requester_id")
+  assignedTo      String?         @map("assigned_to")
+  createdVia      CreatedVia      @map("created_via")
+  confidenceScore Decimal?        @map("confidence_score") @db.Decimal(5, 4)
+  resolutionType  ResolutionType? @map("resolution_type")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  resolvedAt      DateTime?       @map("resolved_at")
+
+  requester User  @relation("TicketRequester", fields: [requesterId], references: [id])
+  assignee  User? @relation("TicketAssignee", fields: [assignedTo], references: [id])
+
+  messages     Message[]
+  assignments  TicketAssignment[]
+  emailThreads EmailThread[]
+  llmUsageLogs LlmUsageLog[]
+
+  @@index([requesterId, status])
+  @@index([assignedTo, status])
+  @@index([status, createdAt])
+  @@map("tickets")
+}
+
+// ============================================================
+// 메시지
+// 소유 유닛: Unit 2 (Intake & Routing)
+// ============================================================
+
+enum MessageVisibility {
+  public
+  private
+}
+
+enum SenderType {
+  user
+  agent_l1
+  agent_l2
+  ai
+  system
+}
+
+enum MessageSource {
+  web
+  email
+  ai_generated
+}
+
+enum ContentType {
+  text
+  html
+}
+
+model Message {
+  id            String            @id @default(uuid())
+  ticketId      String            @map("ticket_id")
+  senderId      String?           @map("sender_id")
+  senderType    SenderType        @map("sender_type")
+  visibility    MessageVisibility
+  content       String            @db.Text
+  contentType   ContentType       @default(text) @map("content_type")
+  attachments   Json?             @db.JsonB // 첨부파일 메타데이터
+  source        MessageSource
+  aiOriginalId  String?           @map("ai_original_id") // AI 가공 원본 Private 메시지 참조
+  createdAt     DateTime          @default(now()) @map("created_at")
+
+  ticket       Ticket    @relation(fields: [ticketId], references: [id])
+  sender       User?     @relation("MessageSender", fields: [senderId], references: [id])
+  aiOriginal   Message?  @relation("AITransform", fields: [aiOriginalId], references: [id])
+  aiTransforms Message[] @relation("AITransform")
+  feedbacks    Feedback[]
+
+  @@index([ticketId, visibility])
+  @@index([ticketId, createdAt])
+  @@map("messages")
+}
+
+// ============================================================
+// 분배 이력
+// 소유 유닛: Unit 2 (Intake & Routing)
+// ============================================================
+
+enum AssignmentType {
+  ai_auto
+  manual
+  reassign
+}
+
+enum AssignmentStatus {
+  active
+  rejected
+  completed
+}
+
+model TicketAssignment {
+  id              String           @id @default(uuid())
+  ticketId        String           @map("ticket_id")
+  assignedTo      String           @map("assigned_to")
+  assignedBy      String?          @map("assigned_by")
+  assignmentType  AssignmentType   @map("assignment_type")
+  status          AssignmentStatus @default(active)
+  rejectedReason  String?          @map("rejected_reason") @db.Text
+  suggestedUserId String?          @map("suggested_user_id")
+  comment         String?          @db.Text // 이관 코멘트
+  createdAt       DateTime         @default(now()) @map("created_at")
+
+  ticket        Ticket @relation(fields: [ticketId], references: [id])
+  assignee      User   @relation("AssignmentTarget", fields: [assignedTo], references: [id])
+  assigner      User?  @relation("AssignmentAssigner", fields: [assignedBy], references: [id])
+  suggestedUser User?  @relation("AssignmentSuggested", fields: [suggestedUserId], references: [id])
+
+  @@index([ticketId, status])
+  @@index([assignedTo, status])
+  @@map("ticket_assignments")
+}
+
+// ============================================================
+// 이메일 스레드
+// 소유 유닛: Unit 2 (Intake & Routing)
+// ============================================================
+
+model EmailThread {
+  id              String   @id @default(uuid())
+  ticketId        String   @map("ticket_id")
+  messageIdHeader String   @map("message_id_header") @db.VarChar(500)
+  inReplyTo       String?  @map("in_reply_to") @db.VarChar(500)
+  references      String?  @db.Text
+  fromEmail       String   @map("from_email") @db.VarChar(255)
+  subject         String   @db.VarChar(500)
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+
+  @@index([messageIdHeader])
+  @@index([ticketId])
+  @@map("email_threads")
+}
+
+// ============================================================
+// LLM 사용 로그
+// 소유 유닛: Unit 3 (AI/RAG)
+// ============================================================
+
+enum ModelType {
+  lightweight
+  heavy
+}
+
+enum LlmRequestType {
+  answer_gen
+  routing
+  category
+  synthesis
+  public_transform
+}
+
+model LlmUsageLog {
+  id          String         @id @default(uuid())
+  ticketId    String?        @map("ticket_id")
+  modelName   String         @map("model_name") @db.VarChar(100)
+  modelType   ModelType      @map("model_type")
+  inputTokens Int            @map("input_tokens")
+  outputTokens Int           @map("output_tokens")
+  costUsd     Decimal        @map("cost_usd") @db.Decimal(10, 6)
+  requestType LlmRequestType @map("request_type")
+  durationMs  Int            @map("duration_ms")
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  ticket Ticket? @relation(fields: [ticketId], references: [id])
+
+  @@index([createdAt, modelName])
+  @@map("llm_usage_logs")
+}
+
+// ============================================================
+// 피드백
+// 소유 유닛: Unit 4 (Admin & Analytics)
+// ============================================================
+
+enum FeedbackRating {
+  positive
+  negative
+}
+
+model Feedback {
+  id        String         @id @default(uuid())
+  messageId String         @map("message_id")
+  userId    String         @map("user_id")
+  rating    FeedbackRating
+  createdAt DateTime       @default(now()) @map("created_at")
+
+  message Message @relation(fields: [messageId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([messageId, userId]) // 중복 피드백 방지
+  @@index([messageId])
+  @@map("feedbacks")
+}
+
+// ============================================================
+// Knowledge Base 엔트리
+// 소유 유닛: Unit 3 (AI/RAG)
+// ============================================================
+
+enum KbSourceType {
+  real_data
+  synthetic
+  feedback
+}
+
+model KnowledgeBaseEntry {
+  id             String       @id @default(uuid())
+  sourceType     KbSourceType @map("source_type")
+  question       String       @db.Text
+  answer         String       @db.Text
+  category       String       @db.VarChar(100)
+  isSynthetic    Boolean      @default(false) @map("is_synthetic")
+  qualityScore   Decimal?     @map("quality_score") @db.Decimal(3, 2)
+  sourceTicketId String?      @map("source_ticket_id")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  indexedAt      DateTime?    @map("indexed_at")
+
+  @@map("knowledge_base_entries")
+}
