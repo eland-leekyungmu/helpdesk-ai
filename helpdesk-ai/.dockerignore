@@ -1,0 +1,15 @@
+node_modules
+.next
+.git
+.gitignore
+.env
+.env.local
+*.md
+infra/
+aidlc-docs/
+.kiro/
+.terraform/
+*.tfstate
+*.tfstate.backup
+coverage/
+.DS_Store

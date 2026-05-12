@@ -1,0 +1,17 @@
+variable "project_name" {
+  description = "Project name used for resource naming"
+  type        = string
+  default     = "helpdesk-ai"
+}
+
+variable "environment" {
+  description = "Environment name"
+  type        = string
+  default     = "dev"
+}
+
+variable "region" {
+  description = "AWS region"
+  type        = string
+  default     = "ap-northeast-2"
+}

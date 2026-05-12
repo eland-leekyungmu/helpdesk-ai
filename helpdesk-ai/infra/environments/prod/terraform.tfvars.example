@@ -1,0 +1,11 @@
+# Production environment variables (EXAMPLE - do not apply yet)
+project_name         = "helpdesk-ai"
+environment          = "prod"
+region               = "ap-northeast-2"
+domain_name          = "ai-dlc.innoplecloud.net"
+inbound_email_domain = "help.ai-dlc.innoplecloud.net"
+vpc_cidr             = "10.1.0.0/16"
+rds_instance_class   = "db.m7g.large"
+ecs_cpu              = 2048
+ecs_memory           = 4096
+ecs_desired_count    = 2
