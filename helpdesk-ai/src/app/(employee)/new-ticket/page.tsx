@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button, Textarea, Input } from "@/components/ui";
 import { Card, CardContent, CardHeader } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
+import { createTicket, submitFeedback } from "@/lib/api";
 
 export default function NewTicketPage() {
   const [subject, setSubject] = useState("");
@@ -22,27 +23,10 @@ export default function NewTicketPage() {
     setAiResponse(null);
 
     try {
-      const formData = new FormData();
-      formData.append("subject", subject);
-      formData.append("content", content);
-      files.forEach((file) => formData.append("attachments", file));
-
-      const res = await fetch("/api/tickets", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
-        setTicketNumber(data.data.ticketNumber);
-        if (data.data.aiResponse) {
-          setAiResponse(data.data.aiResponse);
-        }
-        if (data.data.suggestedCategories) {
-          setSuggestedCategories(data.data.suggestedCategories);
-        }
-      }
+      const result = await createTicket(subject, content);
+      setTicketNumber(result.ticketNumber);
+      setAiResponse(result.aiResponse);
+      setSuggestedCategories(result.suggestedCategories);
     } catch {
       // 에러 처리
     } finally {
@@ -57,7 +41,7 @@ export default function NewTicketPage() {
   };
 
   const handleFeedback = async (rating: "positive" | "negative") => {
-    // TODO: 피드백 API 호출
+    await submitFeedback("mock-msg-id", rating);
     alert(rating === "positive" ? "감사합니다! 👍" : "피드백을 반영하겠습니다.");
   };
 
@@ -84,9 +68,7 @@ export default function NewTicketPage() {
                 required
               />
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  첨부파일
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">첨부파일</label>
                 <input
                   type="file"
                   multiple
@@ -119,9 +101,7 @@ export default function NewTicketPage() {
                   <p className="text-sm text-gray-500 mb-2">AI 추천 카테고리:</p>
                   <div className="flex gap-2 flex-wrap">
                     {suggestedCategories.map((cat) => (
-                      <span key={cat} className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
-                        {cat}
-                      </span>
+                      <span key={cat} className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">{cat}</span>
                     ))}
                   </div>
                 </div>
@@ -137,20 +117,8 @@ export default function NewTicketPage() {
                   </div>
                   <div className="flex items-center gap-2 mt-3">
                     <span className="text-sm text-gray-500">답변이 도움이 되었나요?</span>
-                    <button
-                      onClick={() => handleFeedback("positive")}
-                      className="p-1 hover:bg-green-50 rounded"
-                      aria-label="도움이 됨"
-                    >
-                      👍
-                    </button>
-                    <button
-                      onClick={() => handleFeedback("negative")}
-                      className="p-1 hover:bg-red-50 rounded"
-                      aria-label="도움이 안 됨"
-                    >
-                      👎
-                    </button>
+                    <button onClick={() => handleFeedback("positive")} className="p-1 hover:bg-green-50 rounded" aria-label="도움이 됨">👍</button>
+                    <button onClick={() => handleFeedback("negative")} className="p-1 hover:bg-red-50 rounded" aria-label="도움이 안 됨">👎</button>
                   </div>
                 </div>
               ) : (

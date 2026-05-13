@@ -6,6 +6,7 @@ import { Ticket } from "@/shared/types";
 import { StatusBadge, PriorityBadge } from "@/components/ui";
 import { Card, CardContent } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
+import { getAssignedTickets } from "@/lib/api";
 
 export default function AgentTicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -13,28 +14,14 @@ export default function AgentTicketsPage() {
   const [filter, setFilter] = useState<"all" | "active" | "resolved">("active");
 
   useEffect(() => {
-    fetchTickets();
+    setLoading(true);
+    getAssignedTickets(filter).then((data) => { setTickets(data); setLoading(false); });
   }, [filter]);
-
-  const fetchTickets = async () => {
-    try {
-      const res = await fetch(`/api/tickets/assigned?filter=${filter}`);
-      const data = await res.json();
-      if (data.success) {
-        setTickets(data.data);
-      }
-    } catch {
-      // 에러 처리
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div>
       <PageHeader title="담당 티켓" description="나에게 배정된 티켓 목록" />
 
-      {/* 필터 */}
       <div className="flex gap-2 mb-4">
         {(["active", "all", "resolved"] as const).map((f) => (
           <button
@@ -54,11 +41,7 @@ export default function AgentTicketsPage() {
       {loading ? (
         <div className="flex items-center justify-center h-64"><p className="text-gray-500">로딩 중...</p></div>
       ) : tickets.length === 0 ? (
-        <Card>
-          <CardContent>
-            <p className="text-center text-gray-500 py-8">배정된 티켓이 없습니다.</p>
-          </CardContent>
-        </Card>
+        <Card><CardContent><p className="text-center text-gray-500 py-8">배정된 티켓이 없습니다.</p></CardContent></Card>
       ) : (
         <div className="space-y-3">
           {tickets.map((ticket) => (
@@ -73,9 +56,7 @@ export default function AgentTicketsPage() {
                         <PriorityBadge priority={ticket.priority} />
                       </div>
                       <h3 className="font-medium text-gray-900">{ticket.subject}</h3>
-                      <p className="text-sm text-gray-500 mt-1">
-                        요청자: {ticket.requester?.name || "알 수 없음"}
-                      </p>
+                      <p className="text-sm text-gray-500 mt-1">요청자: {ticket.requester?.name || "알 수 없음"}</p>
                     </div>
                     <div className="text-right text-sm text-gray-500">
                       <p>{new Date(ticket.createdAt).toLocaleDateString("ko-KR")}</p>

@@ -69,7 +69,10 @@ export function Sidebar({ role, userName }: SidebarProps) {
         </ul>
       </nav>
       <div className="p-4 border-t border-gray-700">
-        <button className="w-full text-left text-sm text-gray-400 hover:text-white transition-colors">
+        <button
+          onClick={() => { window.location.href = "/login"; }}
+          className="w-full text-left text-sm text-gray-400 hover:text-white transition-colors"
+        >
           로그아웃
         </button>
       </div>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button, Input } from "@/components/ui";
 import { Card, CardContent, CardHeader } from "@/components/ui";
+import { login } from "@/lib/api";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -15,40 +16,20 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+    const result = await login(email, password);
 
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error || "로그인에 실패했습니다.");
-        return;
-      }
-
-      // 로그인 성공 시 역할에 따라 리다이렉트
-      const data = await res.json();
-      const role = data.user?.role;
-
-      switch (role) {
-        case "admin":
-          window.location.href = "/dashboard";
-          break;
-        case "agent_l1":
-          window.location.href = "/queue";
-          break;
-        case "agent_l2":
-          window.location.href = "/tickets";
-          break;
-        default:
-          window.location.href = "/new-ticket";
-      }
-    } catch {
-      setError("서버에 연결할 수 없습니다.");
-    } finally {
+    if ("error" in result) {
+      setError(result.error);
       setLoading(false);
+      return;
+    }
+
+    const role = result.user.role;
+    switch (role) {
+      case "admin": window.location.href = "/dashboard"; break;
+      case "agent_l1": window.location.href = "/queue"; break;
+      case "agent_l2": window.location.href = "/tickets"; break;
+      default: window.location.href = "/new-ticket";
     }
   };
 
@@ -61,31 +42,20 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              label="이메일"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="name@company.com"
-              required
-              autoComplete="email"
-            />
-            <Input
-              label="비밀번호"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              autoComplete="current-password"
-            />
-            {error && (
-              <p className="text-sm text-red-600" role="alert">{error}</p>
-            )}
-            <Button type="submit" className="w-full" loading={loading}>
-              로그인
-            </Button>
+            <Input label="이메일" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" required autoComplete="email" />
+            <Input label="비밀번호" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required autoComplete="current-password" />
+            {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
+            <Button type="submit" className="w-full" loading={loading}>로그인</Button>
           </form>
+          <div className="mt-4 p-3 bg-gray-50 rounded-md">
+            <p className="text-xs text-gray-500 font-medium mb-2">테스트 계정 (비밀번호: 아무거나 4자 이상)</p>
+            <ul className="text-xs text-gray-500 space-y-1">
+              <li><code>kim@company.com</code> → 임직원</li>
+              <li><code>park@company.com</code> → 1차 처리자</li>
+              <li><code>lee@company.com</code> → 2차 처리자</li>
+              <li><code>choi@company.com</code> → 관리자</li>
+            </ul>
+          </div>
         </CardContent>
       </Card>
     </div>
