@@ -1,14 +1,13 @@
 # =============================================================
-# SES Inbound (us-east-1) - Email Receiving
-# This module must be called with provider = aws.us_east_1
+# SES Inbound (ap-northeast-2) - Email Receiving
 # =============================================================
 
 # S3 Bucket for raw email storage (us-east-1)
 resource "aws_s3_bucket" "email_storage" {
-  bucket = "${var.project_name}-email-${var.environment}"
+  bucket = "${var.project_name}-emails-${var.environment}"
 
   tags = {
-    Name    = "${var.project_name}-email-${var.environment}"
+    Name    = "${var.project_name}-emails-${var.environment}"
     Purpose = "SES inbound email storage"
   }
 }
@@ -179,5 +178,5 @@ resource "aws_route53_record" "mx" {
   name    = var.inbound_domain
   type    = "MX"
   ttl     = 600
-  records = ["10 inbound-smtp.us-east-1.amazonaws.com"]
+  records = ["10 inbound-smtp.ap-northeast-2.amazonaws.com"]
 }

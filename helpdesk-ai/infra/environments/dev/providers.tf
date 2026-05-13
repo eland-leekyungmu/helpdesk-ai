@@ -31,17 +31,4 @@ provider "aws" {
   }
 }
 
-provider "aws" {
-  alias  = "us_east_1"
-  region = "us-east-1"
-
-  default_tags {
-    tags = {
-      Project     = var.project_name
-      Environment = var.environment
-      Unit        = "unit-5-infra"
-      ManagedBy   = "terraform"
-      Service     = "aidlc-ithelp"
-    }
-  }
-}
+# us-east-1 provider 제거 — 모든 리소스 서울 리전으로 통합 (2026-05-13)

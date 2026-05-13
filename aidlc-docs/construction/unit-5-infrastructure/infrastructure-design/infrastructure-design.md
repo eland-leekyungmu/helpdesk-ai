@@ -14,10 +14,10 @@
 | Load Balancer | ALB + ACM + Route 53 | ap-northeast-2 |
 | Messaging | SQS × 6 + DLQ × 6 | ap-northeast-2 |
 | Email (발송) | SES | ap-northeast-2 |
-| Email (수신) | SES + S3 + Lambda | **us-east-1** |
-| AI/RAG | Bedrock + Knowledge Base | **us-east-1** |
-| Vector Store | OpenSearch Serverless | **us-east-1** |
-| KB Data | S3 | **us-east-1** |
+| Email (수신) | SES + S3 + Lambda | ap-northeast-2 |
+| AI/RAG | Bedrock + Knowledge Base | ap-northeast-2 |
+| Vector Store | OpenSearch Serverless | ap-northeast-2 |
+| KB Data | S3 | ap-northeast-2 |
 | Secrets | Secrets Manager | ap-northeast-2 |
 | Monitoring | CloudWatch + CloudTrail + Config | ap-northeast-2 |
 | CI/CD | CodePipeline + CodeBuild + ECR | ap-northeast-2 |
@@ -165,7 +165,7 @@
 
 ---
 
-## 8. Email (SES) — 크로스 리전 아키텍처
+## 8. Email (SES) — 단일 리전 아키텍처
 
 ### 아웃바운드 (ap-northeast-2)
 | 항목 | 값 |
@@ -174,19 +174,19 @@
 | DKIM | Route 53 CNAME 자동 생성 |
 | Sandbox | 초기 sandbox · prod 전환 시 해제 요청 |
 
-### 인바운드 (us-east-1)
+### 인바운드 (ap-northeast-2)
 | 항목 | 값 |
 |---|---|
 | Domain | `help.ai-dlc.innoplecloud.net` |
-| MX Record | `10 inbound-smtp.us-east-1.amazonaws.com` |
+| MX Record | `10 inbound-smtp.ap-northeast-2.amazonaws.com` |
 | Receipt Rule Set | `helpdesk-ai-inbound-dev` |
-| Receipt Rule Action 1 | S3 저장 (`helpdesk-ai-email-us-east-1-dev`) |
+| Receipt Rule Action 1 | S3 저장 (`helpdesk-ai-emails-dev`) |
 | Receipt Rule Action 2 | Lambda 호출 (`helpdesk-ai-email-forwarder-dev`) |
-| Lambda 역할 | SQS SendMessage (ap-northeast-2 큐) |
+| Lambda 역할 | SQS SendMessage (동일 리전) |
 
 ### 인바운드 흐름
 ```
-[이메일 수신] → SES (us-east-1) → Receipt Rule
+[이메일 수신] → SES (ap-northeast-2) → Receipt Rule
     ├── S3 저장 (원본 보관)
     └── Lambda 호출
             ↓
@@ -197,13 +197,13 @@
 
 ---
 
-## 9. AI/RAG (us-east-1)
+## 9. AI/RAG (ap-northeast-2)
 
 | 항목 | 값 |
 |---|---|
 | Bedrock Models | Claude 3.5 Sonnet · Claude 3 Haiku · Titan Embeddings v2 |
 | Knowledge Base | `helpdesk-ai-kb-dev` |
-| Data Source | S3 (`helpdesk-ai-kb-data-dev`, us-east-1) |
+| Data Source | S3 (`helpdesk-ai-kb-docs-dev`, ap-northeast-2) |
 | Vector Store | OpenSearch Serverless Collection (`helpdesk-ai-vectors-dev`) |
 | OCU | Indexing 2 / Search 2 (최소) |
 | Embedding Model | `amazon.titan-embed-text-v2:0` |
@@ -289,8 +289,8 @@ Source (CodeCommit, manual trigger)
 |---|---|---|
 | `helpdesk-ai-tfstate-dev` | ap-northeast-2 | Terraform state |
 | `helpdesk-ai-alb-logs-dev` | ap-northeast-2 | ALB 액세스 로그 |
-| `helpdesk-ai-email-dev` | us-east-1 | SES 인바운드 이메일 원본 |
-| `helpdesk-ai-kb-data-dev` | us-east-1 | KB 엔트리 (JSON/TXT) |
+| `helpdesk-ai-emails-dev` | ap-northeast-2 | SES 인바운드 이메일 원본 |
+| `helpdesk-ai-kb-docs-dev` | ap-northeast-2 | KB 엔트리 (JSON/TXT) |
 | `helpdesk-ai-codepipeline-dev` | ap-northeast-2 | Pipeline 아티팩트 |
 | `helpdesk-ai-codebuild-cache-dev` | ap-northeast-2 | CodeBuild 캐시 |
 

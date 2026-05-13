@@ -5,7 +5,7 @@ import { HttpRequest } from '@smithy/protocol-http';
 import { SignatureV4 } from '@smithy/signature-v4';
 import { Sha256 } from '@aws-crypto/sha256-js';
 
-const REGION = 'us-east-1';
+const REGION = 'ap-northeast-2';
 const INDEX_NAME = 'bedrock-knowledge-base-default-index';
 
 const credentials = {

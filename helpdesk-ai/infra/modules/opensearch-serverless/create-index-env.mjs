@@ -5,7 +5,7 @@ import { HttpRequest } from '@smithy/protocol-http';
 import { SignatureV4 } from '@smithy/signature-v4';
 import { Sha256 } from '@aws-crypto/sha256-js';
 
-const REGION = 'us-east-1';
+const REGION = 'ap-northeast-2';
 const INDEX_NAME = 'bedrock-knowledge-base-default-index';
 
 const credentials = {
@@ -84,5 +84,5 @@ async function createIndex(endpoint) {
   }
 }
 
-const endpoint = process.argv[2] || 'https://fqs5x5yt32bmxhrbcr1d.us-east-1.aoss.amazonaws.com';
+const endpoint = process.argv[2] || 'https://evbrso0ob3as0hy3lbrk.ap-northeast-2.aoss.amazonaws.com';
 createIndex(endpoint);

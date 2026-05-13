@@ -11,7 +11,7 @@ resource "random_password" "master" {
 # =============================================================
 resource "aws_db_subnet_group" "main" {
   name       = "${var.project_name}-db-subnet-${var.environment}"
-  subnet_ids = var.private_subnet_ids
+  subnet_ids = concat(var.public_subnet_ids, var.private_subnet_ids)
 
   tags = {
     Name = "${var.project_name}-db-subnet-${var.environment}"
@@ -93,7 +93,7 @@ resource "aws_db_instance" "main" {
   final_snapshot_identifier = var.environment == "dev" ? null : "${var.project_name}-final-${var.environment}"
   deletion_protection       = var.environment != "dev"
 
-  publicly_accessible = false
+  publicly_accessible = true
 
   tags = {
     Name = "${var.project_name}-rds-${var.environment}"

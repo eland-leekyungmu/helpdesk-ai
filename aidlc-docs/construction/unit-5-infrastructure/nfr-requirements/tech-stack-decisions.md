@@ -11,7 +11,7 @@ Unit 5가 **dev 환경을 실제 프로비저닝**하고 **prod 환경 구조만
 |---|---|---|
 | Cloud Provider | **AWS** | Entry Q4=A |
 | Primary Region | **ap-northeast-2** (서울) | Entry Q4=A · 한국 사용자 레이턴시 최적 |
-| Bedrock Region | **us-east-1** (버지니아) | G2=A · 모델 가용성 (Titan Embed v2, Claude, Nova) · 크로스 리전 TLS 호출 |
+| Bedrock Region | **ap-northeast-2** (서울) | 모델 가용성 확인 완료 (Titan Embed v2, Claude) · 단일 리전 아키텍처 |
 | AWS Account 수 | **단일 계정** | Entry Q4=A · MVP 단순화 |
 
 ---
@@ -73,12 +73,12 @@ Unit 5가 **dev 환경을 실제 프로비저닝**하고 **prod 환경 구조만
 | 항목 | 결정 | 근거 |
 |---|---|---|
 | LLM Provider | AWS Bedrock | Inception 결정 |
-| Bedrock 호출 방식 | **크로스 리전 TLS** (ap-northeast-2 → us-east-1 인터넷 경유) | G2=A · PrivateLink 미사용 (MVP) |
+| Bedrock 호출 방식 | **동일 리전 호출** (ap-northeast-2 내부) | 서울 리전 모델 가용 확인 · 크로스 리전 불필요 |
 | RAG 구성 | **Bedrock Knowledge Base** | Entry Clarification 2=A · 앱은 KB API만 호출 |
 | Vector Store | **OpenSearch Serverless** | Entry Clarification 2=A · Bedrock KB 기본 연동 |
 | OpenSearch Sizing | **최소 OCU (Indexing 2 + Search 2)** | G3=A · 10만건 규모에 여유 충분 · dev/prod 공통 시작 |
-| Embedding Model | `amazon.titan-embed-text-v2:0` (1536 차원) | Titan v2 · us-east-1 가용 |
-| KB Data Source | S3 버킷 (`helpdesk-ai-kb-{env}`) | Bedrock KB S3 데이터 소스 연결 |
+| Embedding Model | `amazon.titan-embed-text-v2:0` (1024 차원) | Titan v2 · ap-northeast-2 가용 |
+| KB Data Source | S3 버킷 (`helpdesk-ai-kb-docs-{env}`) | Bedrock KB S3 데이터 소스 연결 |
 
 **⚠️ 비용 주의**: OpenSearch Serverless 최소 4 OCU × $0.24/h ≈ **$346/월**. 개발 중단 시 Collection 삭제/재생성 운영 옵션 (NFR Design에서 절차 정의).
 
@@ -213,14 +213,14 @@ provider "aws" {
 ## 15. 요약 (한눈에 보기)
 
 ```
-Cloud:        AWS (ap-northeast-2, Bedrock cross-region us-east-1)
+Cloud:        AWS (ap-northeast-2 단일 리전)
 Compute:      ECS Fargate · On-Demand · node:22-alpine
 Database:     RDS PostgreSQL 16 · dev t4g.small / prod m7g.large · gp3
 Network:      VPC /16 · 2-AZ · NAT Gateway × 2
 Entry:        ALB + ACM + Route 53 · WAF 없음 (MVP)
 AI/RAG:       Bedrock KB + OpenSearch Serverless (2+2 OCU) + S3 데이터 소스
 Messaging:    SQS × 6 + DLQ × 6 · Standard · 30s visibility
-Email:        SES (sandbox 시작)
+Email:        SES (sandbox 시작) · 인바운드/아웃바운드 모두 서울
 Secrets:      Secrets Manager (DB password 90일 rotation)
 Logs:         CloudWatch 30d · CloudTrail Multi-Region · VPC Flow ALL
 CI/CD:        CodeCommit + CodePipeline × 2 + CodeBuild + ECR · Manual Release

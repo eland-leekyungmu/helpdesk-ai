@@ -89,12 +89,12 @@ resource "aws_iam_role_policy" "ecs_task_bedrock" {
       {
         Effect   = "Allow"
         Action   = ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"]
-        Resource = ["arn:aws:bedrock:us-east-1::foundation-model/*"]
+        Resource = ["arn:aws:bedrock:ap-northeast-2::foundation-model/*"]
       },
       {
         Effect   = "Allow"
         Action   = ["bedrock:Retrieve", "bedrock:RetrieveAndGenerate"]
-        Resource = ["arn:aws:bedrock:us-east-1:${data.aws_caller_identity.current.account_id}:knowledge-base/*"]
+        Resource = ["arn:aws:bedrock:ap-northeast-2:${data.aws_caller_identity.current.account_id}:knowledge-base/*"]
       }
     ]
   })

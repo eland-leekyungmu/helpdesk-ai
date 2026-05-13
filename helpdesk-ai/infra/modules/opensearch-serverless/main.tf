@@ -1,6 +1,5 @@
 # =============================================================
-# OpenSearch Serverless (us-east-1) - Vector Store for Bedrock KB
-# This module must be called with provider = aws.us_east_1
+# OpenSearch Serverless (ap-northeast-2) - Vector Store for Bedrock KB
 # =============================================================
 
 data "aws_caller_identity" "current" {}

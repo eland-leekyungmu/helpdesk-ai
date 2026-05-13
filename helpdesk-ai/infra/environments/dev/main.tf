@@ -31,6 +31,7 @@ module "rds" {
   environment           = var.environment
   vpc_id                = module.vpc.vpc_id
   private_subnet_ids    = module.vpc.private_subnet_ids
+  public_subnet_ids     = module.vpc.public_subnet_ids
   ecs_security_group_id = module.ecs.security_group_id
   instance_class        = var.rds_instance_class
 }
@@ -111,12 +112,9 @@ module "ses" {
   route53_zone_id = module.route53_acm.zone_id
 }
 
-# --- Email (Inbound - us-east-1) ---
+# --- Email (Inbound - ap-northeast-2) ---
 module "ses_inbound" {
-  source = "../../modules/ses-inbound"
-  providers = {
-    aws = aws.us_east_1
-  }
+  source          = "../../modules/ses-inbound"
   project_name    = var.project_name
   environment     = var.environment
   inbound_domain  = var.inbound_email_domain
@@ -125,21 +123,15 @@ module "ses_inbound" {
   target_sqs_url  = module.sqs.queue_urls["email-inbound"]
 }
 
-# --- AI/RAG (us-east-1) ---
+# --- AI/RAG (ap-northeast-2) ---
 module "opensearch_serverless" {
-  source = "../../modules/opensearch-serverless"
-  providers = {
-    aws = aws.us_east_1
-  }
+  source       = "../../modules/opensearch-serverless"
   project_name = var.project_name
   environment  = var.environment
 }
 
 module "bedrock_kb" {
-  source = "../../modules/bedrock-kb"
-  providers = {
-    aws = aws.us_east_1
-  }
+  source                    = "../../modules/bedrock-kb"
   project_name              = var.project_name
   environment               = var.environment
   opensearch_collection_arn = module.opensearch_serverless.collection_arn

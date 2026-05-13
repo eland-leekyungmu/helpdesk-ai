@@ -34,7 +34,7 @@ variable "s3_bucket_arns" {
 }
 
 variable "kb_data_bucket_arn" {
-  description = "KB data S3 bucket ARN (us-east-1)"
+  description = "KB data S3 bucket ARN"
   type        = string
 }
 

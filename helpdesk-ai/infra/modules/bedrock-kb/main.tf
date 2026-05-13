@@ -1,6 +1,5 @@
 # =============================================================
-# Bedrock Knowledge Base (us-east-1)
-# This module must be called with provider = aws.us_east_1
+# Bedrock Knowledge Base (ap-northeast-2)
 # =============================================================
 
 data "aws_caller_identity" "current" {}
@@ -8,10 +7,10 @@ data "aws_region" "current" {}
 
 # S3 Bucket for KB data source
 resource "aws_s3_bucket" "kb_data" {
-  bucket = "${var.project_name}-kb-data-${var.environment}"
+  bucket = "${var.project_name}-kb-docs-${var.environment}"
 
   tags = {
-    Name    = "${var.project_name}-kb-data-${var.environment}"
+    Name    = "${var.project_name}-kb-docs-${var.environment}"
     Purpose = "Bedrock Knowledge Base data source"
   }
 }

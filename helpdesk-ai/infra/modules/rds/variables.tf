@@ -18,6 +18,11 @@ variable "private_subnet_ids" {
   type        = list(string)
 }
 
+variable "public_subnet_ids" {
+  description = "Public subnet IDs for DB subnet group (publicly accessible)"
+  type        = list(string)
+}
+
 variable "ecs_security_group_id" {
   description = "ECS security group ID (allowed to connect to RDS)"
   type        = string
