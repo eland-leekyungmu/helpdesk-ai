@@ -34,6 +34,14 @@ resource "aws_security_group" "rds" {
     description     = "PostgreSQL from ECS"
   }
 
+  ingress {
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    cidr_blocks = ["58.226.27.226/32"]
+    description = "PostgreSQL from office"
+  }
+
   tags = {
     Name = "${var.project_name}-rds-sg-${var.environment}"
   }
