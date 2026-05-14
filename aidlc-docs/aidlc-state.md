@@ -3,11 +3,10 @@
 ## Project Information
 - **Project Type**: Greenfield
 - **Start Date**: 2026-05-11T00:00:00Z
-- **Current Stage**: CONSTRUCTION - Unit 5 완료, 다음 Unit 대기
-- **Construction Strategy**: Unit 5 단독 Fast-track (Q1=B) — Functional Design skip, NFR Req → NFR Design → Infra Design → Code Gen 순차
+- **Current Stage**: INCEPTION - Units Generation
 
 ## Workspace State
-- **Existing Code**: Yes (Unit 5 Infrastructure 코드 생성 완료)
+- **Existing Code**: No
 - **Reverse Engineering Needed**: No
 - **Workspace Root**: (workspace root)
 
@@ -28,13 +27,10 @@
 - [x] INCEPTION - Workflow Planning
 - [x] INCEPTION - Application Design (+ DB 모델링 초안)
 - [x] INCEPTION - Units Generation
-- [x] CONSTRUCTION - Unit 5: NFR Requirements ✅
-- [x] CONSTRUCTION - Unit 5: NFR Design ✅
-- [x] CONSTRUCTION - Unit 5: Infrastructure Design ✅
-- [x] CONSTRUCTION - Unit 5: Code Generation ✅
-- [x] CONSTRUCTION - Unit 5: Infrastructure Apply (terraform apply 완료) ✅
-- [ ] CONSTRUCTION - Unit 1 (Frontend) 설계 + 코드
-- [ ] CONSTRUCTION - Unit 2 (Intake & Routing) 설계 + 코드
-- [ ] CONSTRUCTION - Unit 3 (AI/RAG) 설계 + 코드
-- [ ] CONSTRUCTION - Unit 4 (Admin & Analytics) 설계 + 코드
+- [ ] CONSTRUCTION - Design 통합 (Functional + NFR + Infra, 5유닛 일괄)
+- [ ] CONSTRUCTION - Code Generation (Unit 1: Frontend)
+- [x] CONSTRUCTION - Code Generation (Unit 2: Intake & Routing)
+- [ ] CONSTRUCTION - Code Generation (Unit 3: AI/RAG)
+- [ ] CONSTRUCTION - Code Generation (Unit 4: Admin & Analytics)
+- [ ] CONSTRUCTION - Code Generation (Unit 5: Infrastructure)
 - [ ] CONSTRUCTION - Build and Test
