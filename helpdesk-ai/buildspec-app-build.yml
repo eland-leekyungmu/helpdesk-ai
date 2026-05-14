@@ -1,0 +1,36 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_TAG=${COMMIT_HASH:=latest}
+  build:
+    commands:
+      - echo Installing dependencies...
+      - cd helpdesk-ai
+      - npm ci
+      - echo Running tests...
+      - npm test --if-present
+      - echo Running security audit...
+      - npm audit --audit-level=high || true
+      - echo Building Docker image...
+      - docker build -t $ECR_REPO_URL:$IMAGE_TAG .
+      - docker tag $ECR_REPO_URL:$IMAGE_TAG $ECR_REPO_URL:latest
+  post_build:
+    commands:
+      - echo Pushing Docker image...
+      - docker push $ECR_REPO_URL:$IMAGE_TAG
+      - echo Writing image definitions file...
+      - printf '[{"name":"helpdesk-ai","imageUri":"%s"}]' $ECR_REPO_URL:$IMAGE_TAG > imagedefinitions.json
+
+artifacts:
+  files:
+    - helpdesk-ai/imagedefinitions.json
+  discard-paths: yes
+
+cache:
+  paths:
+    - helpdesk-ai/node_modules/**/*

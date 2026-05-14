@@ -30,8 +30,11 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files
+.env
+.env.local
+.env.*.local
+!.env.example
 
 # vercel
 .vercel
@@ -41,3 +44,13 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# Terraform
+infra/**/.terraform/
+infra/**/*.tfstate
+infra/**/*.tfstate.backup
+infra/**/*.tfplan
+infra/**/crash.log
+infra/**/.terraform.lock.hcl
+infra/**/terraform.tfvars
+!infra/**/terraform.tfvars.example

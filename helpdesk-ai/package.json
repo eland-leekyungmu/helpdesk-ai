@@ -17,6 +17,10 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
+    "@aws-crypto/sha256-js": "^5.2.0",
+    "@aws-sdk/credential-provider-node": "^3.972.39",
+    "@smithy/protocol-http": "^5.4.1",
+    "@smithy/signature-v4": "^5.4.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
