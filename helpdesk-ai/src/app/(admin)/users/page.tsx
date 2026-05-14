@@ -15,7 +15,7 @@ export default function UsersPage() {
 
   useEffect(() => {
     setLoading(true);
-    getUsers(roleFilter).then((data) => { setUsers(data); setLoading(false); });
+    getUsers(roleFilter === "all" ? undefined : roleFilter).then((data) => { setUsers(data); setLoading(false); });
   }, [roleFilter]);
 
   const roleLabel: Record<UserRole, string> = { employee: "임직원", agent_l1: "1차 처리자", agent_l2: "2차 처리자", admin: "관리자" };

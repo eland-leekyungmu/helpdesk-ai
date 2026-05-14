@@ -49,8 +49,8 @@ async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
         lastError.name === 'ThrottlingException' ||
         lastError.name === 'ServiceUnavailableException' ||
         lastError.message.includes('timeout') ||
-        (lastError as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode
-          ? ((lastError as { $metadata: { httpStatusCode: number } }).$metadata.httpStatusCode >= 500)
+        (lastError as unknown as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode
+          ? ((lastError as unknown as { $metadata: { httpStatusCode: number } }).$metadata.httpStatusCode >= 500)
           : false;
 
       if (!isRetryable || attempt === MAX_RETRIES) {
@@ -193,7 +193,7 @@ export async function retrieveFromKB(params: RetrieveFromKBParams): Promise<KBRe
   return (response.retrievalResults || []).map((result) => ({
     content: result.content?.text || '',
     score: result.score || 0,
-    sourceId: result.metadata?.['x-amz-bedrock-kb-source-uri'] || '',
+    sourceId: String(result.metadata?.['x-amz-bedrock-kb-source-uri'] || ''),
     metadata: (result.metadata as Record<string, string>) || {},
   }));
 }

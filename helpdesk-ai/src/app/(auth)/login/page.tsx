@@ -19,12 +19,12 @@ export default function LoginPage() {
     const result = await login(email, password);
 
     if ("error" in result) {
-      setError(result.error);
+      setError(result.error || "로그인에 실패했습니다.");
       setLoading(false);
       return;
     }
 
-    const role = result.user.role;
+    const role = result.user?.role;
     switch (role) {
       case "admin": window.location.href = "/dashboard"; break;
       case "agent_l1": window.location.href = "/queue"; break;

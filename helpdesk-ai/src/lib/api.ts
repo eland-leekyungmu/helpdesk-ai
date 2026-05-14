@@ -91,7 +91,7 @@ export async function getQueueTickets(): Promise<Ticket[]> {
 }
 
 export async function getAssignedTickets(
-  filter?: TicketStatus
+  filter?: string
 ): Promise<Ticket[]> {
   await delay();
 

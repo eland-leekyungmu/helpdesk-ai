@@ -14,9 +14,10 @@ export type ResolutionType = "ai_auto" | "agent_l1" | "agent_l2";
 export type FeedbackRating = "positive" | "negative";
 
 export interface Attachment {
-  fileName: string;
+  filename: string;
   fileSize: number;
   mimeType: string;
+  size: number;
   url: string;
 }
 

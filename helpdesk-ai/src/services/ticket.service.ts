@@ -2,7 +2,7 @@ import { ticketRepository } from "@/repositories/ticket.repository";
 import { messageRepository } from "@/repositories/message.repository";
 import { assignmentRepository } from "@/repositories/assignment.repository";
 import { userRepository } from "@/repositories/user.repository";
-import { aiService } from "@/services/ai.service";
+import * as aiService from "@/services/ai.service";
 import { generateTicketNumber } from "@/shared/utils/ticket-number";
 import type { AuthUser } from "@/shared/middleware/auth";
 import type { UserRole, TicketStatus } from "@/shared/types/index";
@@ -40,20 +40,26 @@ export const ticketService = {
     });
 
     // 3. AI 답변 생성
-    const aiResponse = await aiService.generateAnswer({
-      ticketId: ticket.id,
-      question: input.content,
-      attachments: input.attachments,
-    });
+    const aiResponse = await aiService.generateAnswer(
+      ticket.id,
+      input.content,
+      input.attachments,
+    );
 
-    // 4. 카테고리 추천
-    const categories = await aiService.suggestCategory(input.content);
+    // 4. 카테고리 추천 (analyzeIntent에서 카테고리 포함)
+    const { intentResult } = await aiService.analyzeIntent(input.content, input.attachments);
+    const categories = intentResult.categories;
 
     // 5. 신뢰도 및 카테고리 업데이트
     await ticketRepository.updateConfidenceAndCategory(ticket.id, aiResponse.confidence, categories);
 
     // 6. 라우팅 판정
-    const routing = await aiService.determineRouting(aiResponse.confidence, aiResponse.sources);
+    const routing = await aiService.determineRouting(
+      aiResponse.confidence,
+      aiResponse.sources as unknown as Parameters<typeof aiService.determineRouting>[1],
+      intentResult,
+      aiResponse.answer,
+    );
 
     let aiMessage = null;
 
