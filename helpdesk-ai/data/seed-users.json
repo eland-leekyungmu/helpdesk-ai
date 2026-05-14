@@ -1,0 +1,278 @@
+{
+  "organization": {
+    "name": "이랜드이노플",
+    "code": "EINOPLE"
+  },
+  "departments": [
+    {
+      "name": "IT개발부서",
+      "code": "DEV",
+      "teams": [
+        {
+          "name": "개발3팀",
+          "code": "DEV3",
+          "members": [
+            { "name": "정우진", "email": "jung_woojin@elandinnople.com", "role": "agent_l2" },
+            { "name": "한서연", "email": "han_seoyeon@elandinnople.com", "role": "agent_l2" }
+          ]
+        },
+        {
+          "name": "ERP팀",
+          "code": "ERP",
+          "members": [
+            { "name": "김민주", "email": "kim_minju@elandinnople.com", "role": "agent_l2" },
+            { "name": "이성일", "email": "lee_sungil@elandinnople.com", "role": "agent_l2" },
+            { "name": "박준혁", "email": "park_junhyuk@elandinnople.com", "role": "agent_l2" }
+          ]
+        },
+        {
+          "name": "CRM팀",
+          "code": "CRM",
+          "members": [
+            { "name": "김대한", "email": "kim_daehan@elandinnople.com", "role": "agent_l2" },
+            { "name": "송지원", "email": "song_jiwon@elandinnople.com", "role": "agent_l2" }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "인프라보안부서",
+      "code": "INFRA",
+      "teams": [
+        {
+          "name": "클라우드팀",
+          "code": "CLOUD",
+          "members": [
+            { "name": "최동현", "email": "choi_donghyun@elandinnople.com", "role": "agent_l2" },
+            { "name": "윤하늘", "email": "yoon_haneul@elandinnople.com", "role": "agent_l2" }
+          ]
+        },
+        {
+          "name": "네트워크팀",
+          "code": "NET",
+          "members": [
+            { "name": "강태우", "email": "kang_taewoo@elandinnople.com", "role": "agent_l2" },
+            { "name": "임수빈", "email": "lim_subin@elandinnople.com", "role": "agent_l2" }
+          ]
+        },
+        {
+          "name": "정보인프라팀",
+          "code": "INFRA_SYS",
+          "members": [
+            { "name": "조현우", "email": "cho_hyunwoo@elandinnople.com", "role": "agent_l2" },
+            { "name": "배소영", "email": "bae_soyoung@elandinnople.com", "role": "agent_l2" }
+          ]
+        },
+        {
+          "name": "정보보안팀",
+          "code": "SEC",
+          "members": [
+            { "name": "오지희", "email": "oh_jihee@elandinnople.com", "role": "agent_l2" },
+            { "name": "신동민", "email": "shin_dongmin@elandinnople.com", "role": "agent_l2" }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "데이터플랫폼부서",
+      "code": "DATA",
+      "teams": [
+        {
+          "name": "데이터플랫폼팀",
+          "code": "DP",
+          "members": [
+            { "name": "류지훈", "email": "ryu_jihoon@elandinnople.com", "role": "agent_l2" },
+            { "name": "문채원", "email": "moon_chaewon@elandinnople.com", "role": "agent_l2" }
+          ]
+        },
+        {
+          "name": "AX혁신팀",
+          "code": "AX",
+          "members": [
+            { "name": "황인호", "email": "hwang_inho@elandinnople.com", "role": "agent_l2" }
+          ]
+        },
+        {
+          "name": "BI팀",
+          "code": "BI",
+          "members": [
+            { "name": "서민재", "email": "seo_minjae@elandinnople.com", "role": "agent_l2" },
+            { "name": "장유진", "email": "jang_yujin@elandinnople.com", "role": "agent_l2" }
+          ]
+        },
+        {
+          "name": "데이터사이언스팀",
+          "code": "DS",
+          "members": [
+            { "name": "권도윤", "email": "kwon_doyoon@elandinnople.com", "role": "agent_l2" }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "시스템운영부서",
+      "code": "OPS",
+      "teams": [
+        {
+          "name": "그룹웨어팀",
+          "code": "GW",
+          "members": [
+            { "name": "나현정", "email": "na_hyunjung@elandinnople.com", "role": "agent_l2" },
+            { "name": "고승우", "email": "ko_seungwoo@elandinnople.com", "role": "agent_l2" }
+          ]
+        },
+        {
+          "name": "SCM팀",
+          "code": "SCM",
+          "members": [
+            { "name": "양지호", "email": "yang_jiho@elandinnople.com", "role": "agent_l2" },
+            { "name": "전미래", "email": "jeon_mirae@elandinnople.com", "role": "agent_l2" }
+          ]
+        },
+        {
+          "name": "FCM팀",
+          "code": "FCM",
+          "members": [
+            { "name": "탁동완", "email": "tak_dongwan@elandinnople.com", "role": "agent_l2" },
+            { "name": "김동상", "email": "kim_dongsang@elandinnople.com", "role": "agent_l2" }
+          ]
+        },
+        {
+          "name": "ERP팀",
+          "code": "OPS_ERP",
+          "members": [
+            { "name": "이재훈", "email": "lee_jaehoon@elandinnople.com", "role": "agent_l2" }
+          ]
+        },
+        {
+          "name": "CRM팀",
+          "code": "OPS_CRM",
+          "members": [
+            { "name": "박서진", "email": "park_seojin@elandinnople.com", "role": "agent_l2" }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "경영지원부서",
+      "code": "BIZ",
+      "teams": [
+        {
+          "name": "기획팀",
+          "code": "PLAN",
+          "members": [
+            { "name": "유승환", "email": "yoo_seunghwan@elandinnople.com", "role": "agent_l2" }
+          ]
+        },
+        {
+          "name": "경영지원팀",
+          "code": "SUPPORT",
+          "members": [
+            { "name": "홍지수", "email": "hong_jisoo@elandinnople.com", "role": "agent_l2" }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "인사부서",
+      "code": "HR",
+      "teams": [
+        {
+          "name": "HR팀",
+          "code": "HR_MAIN",
+          "members": [
+            { "name": "안소희", "email": "ahn_sohee@elandinnople.com", "role": "agent_l2" }
+          ]
+        },
+        {
+          "name": "인사총무팀",
+          "code": "HR_GA",
+          "members": [
+            { "name": "손태영", "email": "son_taeyoung@elandinnople.com", "role": "agent_l2" }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "재무부서",
+      "code": "FIN",
+      "teams": [
+        {
+          "name": "재무팀",
+          "code": "FIN_MAIN",
+          "members": [
+            { "name": "차민석", "email": "cha_minseok@elandinnople.com", "role": "agent_l2" }
+          ]
+        },
+        {
+          "name": "세무행정팀",
+          "code": "TAX",
+          "members": [
+            { "name": "구자영", "email": "koo_jayoung@elandinnople.com", "role": "agent_l2" }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "홍보부서",
+      "code": "PR",
+      "teams": [
+        {
+          "name": "홍보마케팅팀",
+          "code": "PR_MKT",
+          "members": [
+            { "name": "백수연", "email": "baek_sooyeon@elandinnople.com", "role": "agent_l2" }
+          ]
+        }
+      ]
+    }
+  ],
+  "serviceDesk": {
+    "name": "ITHelpDesk팀",
+    "members": [
+      { "name": "김보경", "email": "kim_bokyeong@eland-partner.co.kr", "role": "agent_l1" },
+      { "name": "이찬욱", "email": "lee_chanwook@eland-partner.co.kr", "role": "agent_l1" },
+      { "name": "최현진", "email": "choi_hyunjin@eland-partner.co.kr", "role": "agent_l1" },
+      { "name": "강동호", "email": "kang_dongho@eland-partner.co.kr", "role": "agent_l1" }
+    ]
+  },
+  "requesters": [
+    { "name": "박아란", "email": "park_aran@eland.co.kr", "company": "이랜드이츠", "department": "외식사업부", "position": "파트장" },
+    { "name": "박은경", "email": "park_eunkyung@eland.co.kr", "company": "이랜드리테일", "department": "고객상담실", "position": "팀장" },
+    { "name": "이화성", "email": "lee_hwasung@eland.co.kr", "company": "이랜드리테일", "department": "영업팀", "position": "팀장" },
+    { "name": "이승엽", "email": "lee_seongyeob@eland.co.kr", "company": "이랜드리테일", "department": "영업팀", "position": "팀장" },
+    { "name": "이수형", "email": "lee_soohyung@eland.co.kr", "company": "이랜드리테일", "department": "킴스클럽", "position": "담당" },
+    { "name": "허소정", "email": "heo_sojeong@eland.co.kr", "company": "이랜드월드", "department": "1사업부", "position": "점장" },
+    { "name": "차상민", "email": "cha_sangmin@eland.co.kr", "company": "이랜드리테일", "department": "킴스클럽", "position": "담당" },
+    { "name": "오세덕", "email": "oh_seadeok@eland.co.kr", "company": "이랜드파크", "department": "서비스운영팀", "position": "담당" },
+    { "name": "김지현", "email": "kim_jihyun@eland.co.kr", "company": "이랜드월드", "department": "디자인팀", "position": "사원" },
+    { "name": "정민호", "email": "jung_minho@eland.co.kr", "company": "이랜드리테일", "department": "MD팀", "position": "대리" },
+    { "name": "송하은", "email": "song_haeun@eland.co.kr", "company": "이랜드이츠", "department": "매장운영팀", "position": "매니저" },
+    { "name": "윤재석", "email": "yoon_jaeseok@eland.co.kr", "company": "이랜드월드", "department": "마케팅팀", "position": "과장" },
+    { "name": "한예진", "email": "han_yejin@eland.co.kr", "company": "이랜드리테일", "department": "인사팀", "position": "대리" },
+    { "name": "노승현", "email": "noh_seunghyun@eland.co.kr", "company": "이랜드파크", "department": "시설관리팀", "position": "주임" },
+    { "name": "임도연", "email": "lim_doyeon@eland.co.kr", "company": "이랜드이츠", "department": "품질관리팀", "position": "사원" },
+    { "name": "배진우", "email": "bae_jinwoo@eland.co.kr", "company": "이랜드리테일", "department": "물류팀", "position": "과장" },
+    { "name": "조은서", "email": "cho_eunseo@eland.co.kr", "company": "이랜드월드", "department": "재무팀", "position": "대리" },
+    { "name": "신유라", "email": "shin_yura@eland.co.kr", "company": "이랜드리테일", "department": "영업지원팀", "position": "사원" },
+    { "name": "마위팅", "email": "ma_yuting@elandfashion.cn", "company": "중국이랜드패션", "department": "IT서비스데스크", "position": "담당" },
+    { "name": "왕지", "email": "wang_ji@elandfashion.cn", "company": "중국이랜드패션", "department": "IT부", "position": "담당" }
+  ],
+  "ticketScenarios": [
+    {
+      "type": "l1_resolved",
+      "description": "1차 처리자(ITHelpDesk팀)가 직접 답변하여 해결",
+      "ratio": 0.55
+    },
+    {
+      "type": "l2_resolved",
+      "description": "2차 처리자에게 이관 후 해결",
+      "ratio": 0.40
+    },
+    {
+      "type": "l2_rejected_then_resolved",
+      "description": "2차 처리자가 '본인 아님' 처리 후 재분배되어 해결",
+      "ratio": 0.05
+    }
+  ]
+}

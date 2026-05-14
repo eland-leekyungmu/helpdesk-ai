@@ -1,0 +1,92 @@
+[
+  {
+    "subject": "재택근무 중 VPN 연결 후 사내 시스템 접속 불가",
+    "question": "안녕하세요, 오늘부터 재택근무인데 VPN은 연결이 되는 것 같은데 이랜드 그룹웨어(EIP)랑 ERP 시스템이 아예 안 열려요. VPN 연결하면 인터넷도 엄청 느려지고요.",
+    "answer": "안녕하세요, IT 서비스데스크입니다. VPN 연결 후 사내 시스템 접속이 안 되는 경우, VPN 클라이언트(GlobalProtect) 재연결, DNS 초기화(ipconfig /flushdns), 그리고 Full Tunnel 방식으로 인한 속도 저하는 정상임을 안내드립니다. 조치 후에도 동일 증상 시 네트워크팀 2차 확인 요청드리겠습니다.",
+    "category": "네트워크",
+    "department": "인프라보안부서",
+    "team": "네트워크팀",
+    "tags": ["VPN", "GlobalProtect", "재택근무"],
+    "resolution_type": "l1_resolved",
+    "requester": {
+      "name": "허소정",
+      "email": "heo_sojeong@eland.co.kr",
+      "company": "이랜드월드"
+    },
+    "agent_l1": {
+      "name": "김보경",
+      "email": "kim_bokyeong@eland-partner.co.kr"
+    },
+    "agent_l2": null
+  },
+  {
+    "subject": "재고 실사 등록 엑셀 업로드 오류",
+    "question": "안녕하세요. 생산관리 메뉴와 창고 재고 실사 등록 메뉴에서 엑셀 업로드 시 오류가 발생합니다. 원자재 가지수가 많아 하나씩 입력하기 어렵습니다.",
+    "answer": "안녕하세요, IT 서비스데스크입니다. 창고재고실사등록 엑셀 업로드 오류 조치 완료하였습니다. 확인 부탁드립니다.",
+    "category": "ERP 시스템",
+    "department": "IT개발부서",
+    "team": "ERP팀",
+    "tags": ["ERP", "엑셀업로드", "재고실사", "외식ERP"],
+    "resolution_type": "l2_resolved",
+    "requester": {
+      "name": "박아란",
+      "email": "park_aran@eland.co.kr",
+      "company": "이랜드이츠"
+    },
+    "agent_l1": {
+      "name": "김보경",
+      "email": "kim_bokyeong@eland-partner.co.kr"
+    },
+    "agent_l2": {
+      "name": "김민주",
+      "email": "kim_minju@elandinnople.com",
+      "department": "IT개발부서",
+      "team": "ERP팀"
+    }
+  },
+  {
+    "subject": "VPN 계정 잠김",
+    "question": "안녕하세요. 비밀번호 변경 후 VPN 연결 시 권한이 없다고 뜹니다. 확인 부탁드립니다.",
+    "answer": "안녕하세요, IT 서비스데스크입니다. 계정 잠금해제하였습니다. 지속 안되는 경우 비밀번호에 특수문자(<, > 등)가 포함되어 있는지 확인 후, 있다면 다시 변경 후 진행 요청드립니다.",
+    "category": "정보보안",
+    "department": "인프라보안부서",
+    "team": "정보보안팀",
+    "tags": ["VPN", "계정잠김", "비밀번호"],
+    "resolution_type": "l2_resolved",
+    "requester": {
+      "name": "허소정",
+      "email": "heo_sojeong@eland.co.kr",
+      "company": "이랜드월드"
+    },
+    "agent_l1": {
+      "name": "김보경",
+      "email": "kim_bokyeong@eland-partner.co.kr"
+    },
+    "agent_l2": {
+      "name": "오지희",
+      "email": "oh_jihee@elandinnople.com",
+      "department": "인프라보안부서",
+      "team": "정보보안팀"
+    }
+  },
+  {
+    "subject": "그룹 메일 리스트 삭제 요청",
+    "question": "그룹 메일 리스트 삭제 요청 드립니다. 그룹명: KR_Hallim@eland.co.kr, 삭제 대상: 오세덕 oh_seadeok@eland.co.kr",
+    "answer": "안녕하세요, IT 서비스데스크입니다. 요청하신 그룹메일 수신자 삭제하였습니다. 감사합니다.",
+    "category": "그룹웨어 (메일/캘린더/결재)",
+    "department": "시스템운영부서",
+    "team": "그룹웨어팀",
+    "tags": ["그룹메일", "수신자삭제", "이메일"],
+    "resolution_type": "l1_resolved",
+    "requester": {
+      "name": "오세덕",
+      "email": "oh_seadeok@eland.co.kr",
+      "company": "이랜드파크"
+    },
+    "agent_l1": {
+      "name": "김보경",
+      "email": "kim_bokyeong@eland-partner.co.kr"
+    },
+    "agent_l2": null
+  }
+]

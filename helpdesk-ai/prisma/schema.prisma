@@ -288,6 +288,8 @@ enum LlmRequestType {
   category
   synthesis
   public_transform
+  intent_analysis
+  seed_generation
 }
 
 model LlmUsageLog {
