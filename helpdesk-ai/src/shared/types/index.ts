@@ -127,18 +127,19 @@ export interface PaginatedResult<T> {
   totalPages: number;
 }
 
-export interface ApiResponse<T> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
 }
 
 export interface TicketStats {
-  total: number;
-  open: number;
-  inProgress: number;
-  resolved: number;
-  closed: number;
+  total?: number;
+  open?: number;
+  inProgress?: number;
+  resolved?: number;
+  closed?: number;
+  [key: string]: unknown;
 }
 
 export interface KpiStats {
@@ -152,3 +153,7 @@ export interface LlmCostStats {
   byModel: { model: string; cost: number; calls: number }[];
   byPeriod: { date: string; cost: number }[];
 }
+
+
+// Re-export auth types for Unit 4 compatibility
+export type { AuthResult, TokenPayload, LoginRequest, CreateUserRequest, CreateUserInput, UpdateUserRequest, UpdateUserInput, SettingsUpdate, CreateDepartmentInput, CreateTeamInput, CreateOrganizationInput, SubmitFeedbackInput, UpdateOrganizationInput, UpdateDepartmentInput, UpdateTeamInput, AgentFilters, DateRange, RateMetric, CostStats, DepartmentStats, ReindexStatus } from "./auth";

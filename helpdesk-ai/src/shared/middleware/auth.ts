@@ -1,65 +1,105 @@
-import { NextRequest } from "next/server";
-import type { UserRole } from "../types/index";
+import { NextRequest, NextResponse } from 'next/server';
+import jwt from 'jsonwebtoken';
+import type { UserRole } from '@prisma/client';
+import type { TokenPayload } from '../types';
+
+const JWT_SECRET = process.env.NEXTAUTH_SECRET || 'default-secret';
 
 /**
- * JWT 토큰에서 추출된 사용자 정보
+ * JWT 토큰 검증 및 페이로드 추출
  */
-export interface AuthUser {
-  id: string;
-  email: string;
-  name: string;
-  role: UserRole;
-  teamId: string;
-}
-
-/**
- * 요청에서 인증된 사용자 정보를 추출합니다.
- * Unit 4에서 실제 JWT 검증 로직을 구현할 예정.
- * 현재는 헤더에서 사용자 정보를 파싱하는 stub입니다.
- */
-export async function getAuthUser(request: NextRequest): Promise<AuthUser | null> {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    return null;
-  }
-
-  // TODO: Unit 4에서 실제 JWT 검증으로 교체
-  // 현재는 개발용으로 토큰을 base64 디코딩하여 사용자 정보 추출
+export function verifyToken(token: string): TokenPayload | null {
   try {
-    const token = authHeader.slice(7);
-    const payload = JSON.parse(Buffer.from(token.split(".")[1] || "", "base64").toString());
-    return {
-      id: payload.sub || payload.id,
-      email: payload.email,
-      name: payload.name,
-      role: payload.role,
-      teamId: payload.teamId,
-    };
+    return jwt.verify(token, JWT_SECRET) as TokenPayload;
   } catch {
     return null;
   }
 }
 
 /**
- * 역할 기반 접근 제어 검증
+ * Request에서 Bearer 토큰 추출
  */
-export function hasRole(user: AuthUser, allowedRoles: UserRole[]): boolean {
-  return allowedRoles.includes(user.role);
+export function extractToken(request: NextRequest): string | null {
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  return authHeader.slice(7);
 }
 
 /**
- * 인증 필수 + 역할 검증 헬퍼
+ * 인증 미들웨어 - 토큰 검증
  */
+export function withAuth(
+  handler: (request: NextRequest, payload: TokenPayload) => Promise<NextResponse>,
+) {
+  return async (request: NextRequest) => {
+    const token = extractToken(request);
+    if (!token) {
+      return NextResponse.json(
+        { success: false, error: '인증 토큰이 필요합니다.' },
+        { status: 401 },
+      );
+    }
+
+    const payload = verifyToken(token);
+    if (!payload) {
+      return NextResponse.json(
+        { success: false, error: '유효하지 않은 토큰입니다.' },
+        { status: 401 },
+      );
+    }
+
+    return handler(request, payload);
+  };
+}
+
+/**
+ * Role 기반 인가 미들웨어
+ */
+export function withRole(
+  roles: UserRole[],
+  handler: (request: NextRequest, payload: TokenPayload) => Promise<NextResponse>,
+) {
+  return withAuth(async (request, payload) => {
+    if (!roles.includes(payload.role)) {
+      return NextResponse.json(
+        { success: false, error: '접근 권한이 없습니다.' },
+        { status: 403 },
+      );
+    }
+    return handler(request, payload);
+  });
+}
+
+
+// Alias for Unit 2 compatibility — direct call pattern
+import type { AuthUser } from './auth-types';
+export type { AuthUser } from './auth-types';
+
 export async function requireAuth(
   request: NextRequest,
-  allowedRoles?: UserRole[]
+  allowedRoles?: string[],
 ): Promise<{ user: AuthUser } | { error: { code: string; message: string; status: number } }> {
-  const user = await getAuthUser(request);
-  if (!user) {
-    return { error: { code: "UNAUTHORIZED", message: "인증이 필요합니다.", status: 401 } };
+  const token = extractToken(request);
+  if (!token) {
+    return { error: { code: "UNAUTHORIZED", message: "인증 토큰이 필요합니다.", status: 401 } };
   }
-  if (allowedRoles && !hasRole(user, allowedRoles)) {
+
+  const payload = verifyToken(token);
+  if (!payload) {
+    return { error: { code: "INVALID_TOKEN", message: "유효하지 않은 토큰입니다.", status: 401 } };
+  }
+
+  if (allowedRoles && !allowedRoles.includes(payload.role)) {
     return { error: { code: "FORBIDDEN", message: "접근 권한이 없습니다.", status: 403 } };
   }
-  return { user };
+
+  return {
+    user: {
+      id: payload.userId,
+      email: payload.email,
+      name: payload.email.split("@")[0],
+      role: payload.role as AuthUser["role"],
+      teamId: "",
+    },
+  };
 }
