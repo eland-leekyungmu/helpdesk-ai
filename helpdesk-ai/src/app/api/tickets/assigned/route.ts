@@ -10,7 +10,7 @@ import type { TicketStatus } from "@/shared/types/index";
  * 허용 역할: agent_l1, agent_l2
  */
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth(request, ["agent_l1", "agent_l2"]);
+  const auth = await requireAuth(request, ["agent_l1", "agent_l2", "admin"]);
   if ("error" in auth) {
     return errorResponse(auth.error.code, auth.error.message, auth.error.status);
   }

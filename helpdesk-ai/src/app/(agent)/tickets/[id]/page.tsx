@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { Ticket, Message, User } from "@/shared/types";
+import { Ticket, Message, User, UserRole } from "@/shared/types";
 import { Button, Textarea } from "@/components/ui";
 import { StatusBadge, VisibilityBadge } from "@/components/ui";
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui";
@@ -18,53 +18,104 @@ export default function AgentTicketDetailPage() {
   const [replyContent, setReplyContent] = useState("");
   const [replyVisibility, setReplyVisibility] = useState<"public" | "private">("public");
   const [sending, setSending] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [agents, setAgents] = useState<User[]>([]);
   const [assignComment, setAssignComment] = useState("");
   const [selectedAgent, setSelectedAgent] = useState("");
+  const [rejectReason, setRejectReason] = useState("");
+  const [suggestedAgent, setSuggestedAgent] = useState("");
+  const [userRole, setUserRole] = useState<UserRole>("agent_l1");
 
   useEffect(() => {
-    getTicketDetail(ticketId).then(({ ticket, messages }) => {
-      setTicket(ticket);
-      setMessages(messages); // 처리자는 Public + Private 모두 볼 수 있음
-      setLoading(false);
-    });
+    // JWT에서 역할 추출
+    const token = localStorage.getItem("auth_token");
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        setUserRole(payload.role || "agent_l1");
+        // 2차 처리자는 Private 전용
+        if (payload.role === "agent_l2") {
+          setReplyVisibility("private");
+        }
+      } catch {}
+    }
+    fetchTicketDetail();
   }, [ticketId]);
+
+  const fetchTicketDetail = () => {
+    getTicketDetail(ticketId)
+      .then(({ ticket, messages }) => {
+        setTicket(ticket);
+        setMessages(messages);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  };
 
   const handleReply = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!replyContent.trim()) return;
     setSending(true);
-    await addMessage(ticketId, replyContent, replyVisibility);
-    // 목업: 메시지 추가 시뮬레이션
-    setMessages((prev) => [...prev, {
-      id: `m-${Date.now()}`, ticketId, senderId: "u2", senderType: "agent_l1",
-      visibility: replyVisibility, content: replyContent, contentType: "text",
-      attachments: null, source: "web", createdAt: new Date().toISOString(),
-    }]);
-    setReplyContent("");
+    try {
+      await addMessage(ticketId, replyContent, replyVisibility);
+      setReplyContent("");
+      fetchTicketDetail();
+    } catch {}
     setSending(false);
   };
 
   const openAssignModal = async () => {
-    const agentList = await getAgents();
-    setAgents(agentList);
+    try {
+      const agentList = await getAgents();
+      setAgents(agentList);
+    } catch {}
     setShowAssignModal(true);
   };
 
   const handleAssign = async () => {
     if (!selectedAgent) return;
-    alert(`${agents.find(a => a.id === selectedAgent)?.name}에게 분배되었습니다.`);
+    try {
+      const token = localStorage.getItem("auth_token");
+      await fetch("/api/tickets/assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ ticketId, assignedTo: selectedAgent, comment: assignComment }),
+      });
+    } catch {}
     setShowAssignModal(false);
     setAssignComment("");
+    fetchTicketDetail();
   };
 
-  const handleReject = () => {
-    alert("'본인 아님' 처리되었습니다. AI가 재분배합니다.");
+  const handleReject = async () => {
+    try {
+      const token = localStorage.getItem("auth_token");
+      await fetch("/api/tickets/reject", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ ticketId, reason: rejectReason, suggestedUserId: suggestedAgent || undefined }),
+      });
+    } catch {}
+    setShowRejectModal(false);
+    setRejectReason("");
+    setSuggestedAgent("");
+    fetchTicketDetail();
+  };
+
+  const openRejectModal = async () => {
+    try {
+      const agentList = await getAgents();
+      setAgents(agentList);
+    } catch {}
+    setShowRejectModal(true);
   };
 
   if (loading) return <div className="flex items-center justify-center h-64"><p className="text-gray-500">로딩 중...</p></div>;
   if (!ticket) return <div className="text-center py-8 text-gray-500">티켓을 찾을 수 없습니다.</div>;
+
+  const isL1 = userRole === "agent_l1";
+  const isL2 = userRole === "agent_l2";
 
   return (
     <div>
@@ -74,8 +125,10 @@ export default function AgentTicketDetailPage() {
         actions={
           <div className="flex items-center gap-2">
             <StatusBadge status={ticket.status} />
-            <Button variant="secondary" size="sm" onClick={openAssignModal}>2차 분배</Button>
-            <Button variant="danger" size="sm" onClick={handleReject}>본인 아님</Button>
+            {/* 1차 처리자: 2차 분배 버튼 */}
+            {isL1 && <Button variant="secondary" size="sm" onClick={openAssignModal}>2차 분배</Button>}
+            {/* 2차 처리자: 본인 아님 버튼 */}
+            {isL2 && <Button variant="danger" size="sm" onClick={openRejectModal}>본인 아님</Button>}
           </div>
         }
       />
@@ -113,10 +166,17 @@ export default function AgentTicketDetailPage() {
         <CardHeader>
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium">답변 작성</span>
-            <div className="flex gap-1">
-              <button onClick={() => setReplyVisibility("public")} className={`px-2 py-1 text-xs rounded ${replyVisibility === "public" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600"}`}>Public</button>
-              <button onClick={() => setReplyVisibility("private")} className={`px-2 py-1 text-xs rounded ${replyVisibility === "private" ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-600"}`}>Private</button>
-            </div>
+            {/* 1차 처리자만 Public/Private 토글 가능 */}
+            {isL1 && (
+              <div className="flex gap-1">
+                <button onClick={() => setReplyVisibility("public")} className={`px-2 py-1 text-xs rounded ${replyVisibility === "public" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600"}`}>Public</button>
+                <button onClick={() => setReplyVisibility("private")} className={`px-2 py-1 text-xs rounded ${replyVisibility === "private" ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-600"}`}>Private</button>
+              </div>
+            )}
+            {/* 2차 처리자는 Private 고정 표시 */}
+            {isL2 && (
+              <span className="px-2 py-1 text-xs rounded bg-purple-600 text-white">Private</span>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -124,17 +184,17 @@ export default function AgentTicketDetailPage() {
             <Textarea
               value={replyContent}
               onChange={(e) => setReplyContent(e.target.value)}
-              placeholder={replyVisibility === "public" ? "요청자에게 전달될 답변을 작성하세요..." : "내부 메모를 작성하세요 (요청자에게 보이지 않음)..."}
+              placeholder={isL2 ? "답변을 작성하세요 (AI가 가공하여 요청자에게 전달됩니다)..." : replyVisibility === "public" ? "요청자에게 전달될 답변을 작성하세요..." : "내부 메모를 작성하세요 (요청자에게 보이지 않음)..."}
               required
             />
             <Button type="submit" loading={sending}>
-              {replyVisibility === "public" ? "답변 전송" : "내부 메모 저장"}
+              {isL2 ? "답변 저장 (Private)" : replyVisibility === "public" ? "답변 전송" : "내부 메모 저장"}
             </Button>
           </form>
         </CardContent>
       </Card>
 
-      {/* 분배 모달 */}
+      {/* 2차 분배 모달 (1차 처리자 전용) */}
       {showAssignModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <Card className="w-full max-w-md">
@@ -155,6 +215,38 @@ export default function AgentTicketDetailPage() {
               <div className="flex justify-end gap-2">
                 <Button variant="secondary" onClick={() => setShowAssignModal(false)}>취소</Button>
                 <Button onClick={handleAssign} disabled={!selectedAgent}>분배</Button>
+              </div>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
+
+      {/* 본인 아님 모달 (2차 처리자 전용) */}
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-md">
+            <CardHeader><h3 className="text-lg font-semibold">본인 업무 아님</h3></CardHeader>
+            <CardContent className="space-y-4">
+              <Textarea
+                label="사유 (선택)"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="본인 업무가 아닌 이유를 입력하세요..."
+              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">다른 담당자 추천 (선택)</label>
+                <select value={suggestedAgent} onChange={(e) => setSuggestedAgent(e.target.value)} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm">
+                  <option value="">선택 안 함 (AI가 재분배)</option>
+                  {agents.map((agent) => (
+                    <option key={agent.id} value={agent.id}>{agent.name} ({agent.team?.name})</option>
+                  ))}
+                </select>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <div className="flex justify-end gap-2">
+                <Button variant="secondary" onClick={() => setShowRejectModal(false)}>취소</Button>
+                <Button variant="danger" onClick={handleReject}>본인 아님 처리</Button>
               </div>
             </CardFooter>
           </Card>

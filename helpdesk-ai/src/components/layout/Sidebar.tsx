@@ -24,6 +24,7 @@ const navByRole: Record<UserRole, NavItem[]> = {
   ],
   admin: [
     { href: "/dashboard", label: "대시보드", icon: "📊" },
+    { href: "/all-tickets", label: "전체 티켓", icon: "🎫" },
     { href: "/statistics", label: "통계", icon: "📈" },
     { href: "/users", label: "사용자 관리", icon: "👥" },
     { href: "/settings", label: "설정", icon: "⚙️" },
@@ -70,7 +71,10 @@ export function Sidebar({ role, userName }: SidebarProps) {
       </nav>
       <div className="p-4 border-t border-gray-700">
         <button
-          onClick={() => { window.location.href = "/login"; }}
+          onClick={() => { 
+            if (typeof window !== "undefined") localStorage.removeItem("auth_token");
+            window.location.href = "/login"; 
+          }}
           className="w-full text-left text-sm text-gray-400 hover:text-white transition-colors"
         >
           로그아웃

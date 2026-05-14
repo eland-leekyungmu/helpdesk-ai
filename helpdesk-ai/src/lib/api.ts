@@ -3,29 +3,52 @@ import type {
   Message,
   User,
   UserRole,
-  TicketStatus,
   TicketStats,
   KpiStats,
   LlmCostStats,
-  MessageVisibility,
 } from "@/shared/types";
-import {
-  mockUsers,
-  mockTickets,
-  mockMessages,
-  mockTicketStats,
-  mockKpiStats,
-  mockLlmCostStats,
-} from "./mock-data";
 
-// --- Utility ---
+// ============================================================
+// API Layer - 실제 API Routes 호출
+// ============================================================
 
-function delay(ms?: number): Promise<void> {
-  const time = ms ?? Math.floor(Math.random() * 800) + 200;
-  return new Promise((resolve) => setTimeout(resolve, time));
+function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("auth_token");
 }
 
-// --- Ticket APIs ---
+export function setToken(token: string) {
+  localStorage.setItem("auth_token", token);
+}
+
+export function clearToken() {
+  localStorage.removeItem("auth_token");
+}
+
+async function request<T>(url: string, options?: RequestInit): Promise<T> {
+  const token = getToken();
+  const res = await fetch(url, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options?.headers,
+    },
+    ...options,
+  });
+  const json = await res.json();
+  if (!json.success) {
+    const msg = json.error?.message || json.error || "요청에 실패했습니다.";
+    if (res.status === 401 && typeof window !== "undefined") {
+      clearToken();
+      window.location.href = "/login";
+    }
+    console.error(`[API Error] ${res.status} ${url}: ${msg}`);
+    throw new Error(msg);
+  }
+  return json.data;
+}
+
+// --- Tickets ---
 
 export async function createTicket(
   subject: string,
@@ -35,156 +58,171 @@ export async function createTicket(
   aiResponse: string | null;
   suggestedCategories: string[];
 }> {
-  await delay();
-
-  const ticketNumber = `TK-2024-${String(Math.floor(Math.random() * 900) + 100)}`;
-
-  // 70% chance of AI response
-  const aiResponse =
-    Math.random() < 0.7
-      ? `접수해 주신 "${subject}" 건에 대해 확인했습니다. 관련 문서를 확인한 결과, 다음 조치를 권장드립니다:\n1. 시스템을 재시작해 보세요.\n2. 문제가 지속되면 담당 에이전트가 배정됩니다.`
-      : null;
-
-  const categoryMap: Record<string, string[]> = {
-    vpn: ["네트워크", "VPN"],
-    네트워크: ["네트워크", "연결"],
-    비밀번호: ["계정", "비밀번호"],
-    프린터: ["하드웨어", "프린터"],
-    소프트웨어: ["소프트웨어", "설치"],
-    라이선스: ["소프트웨어", "라이선스"],
+  const data = await request<any>("/api/tickets", {
+    method: "POST",
+    body: JSON.stringify({ subject, content }),
+  });
+  return {
+    ticketNumber: data.ticketNumber || data.ticket_number || "HD-0000",
+    aiResponse: data.aiResponse?.content || data.aiResponse || null,
+    suggestedCategories: data.category || data.suggestedCategories || [],
   };
-
-  const lowerSubject = subject.toLowerCase() + " " + content.toLowerCase();
-  let suggestedCategories: string[] = ["일반", "기타"];
-
-  for (const [keyword, categories] of Object.entries(categoryMap)) {
-    if (lowerSubject.includes(keyword)) {
-      suggestedCategories = categories;
-      break;
-    }
-  }
-
-  return { ticketNumber, aiResponse, suggestedCategories };
 }
 
 export async function getMyTickets(): Promise<Ticket[]> {
-  await delay();
-  return mockTickets;
+  try {
+    const data = await request<any>("/api/tickets/my");
+    return data.items || data || [];
+  } catch {
+    return [];
+  }
 }
 
 export async function getTicketDetail(
   ticketId: string
 ): Promise<{ ticket: Ticket; messages: Message[] }> {
-  await delay();
-
-  const ticket = mockTickets.find((t) => t.id === ticketId) ?? mockTickets[0];
-  const messages = mockMessages[ticketId] ?? [];
-
-  return { ticket, messages };
+  const data = await request<any>(`/api/tickets/${ticketId}`);
+  return {
+    ticket: data.ticket || data,
+    messages: data.messages || [],
+  };
 }
 
 export async function getQueueTickets(): Promise<Ticket[]> {
-  await delay();
-  return mockTickets.filter(
-    (t) => t.confidenceScore !== null && t.confidenceScore < 0.65
-  );
-}
-
-export async function getAssignedTickets(
-  filter?: string
-): Promise<Ticket[]> {
-  await delay();
-
-  if (filter) {
-    return mockTickets.filter((t) => t.status === filter);
+  try {
+    const data = await request<any>("/api/tickets/queue");
+    return data.items || data || [];
+  } catch {
+    return [];
   }
-  return mockTickets;
 }
+
+export async function getAssignedTickets(filter?: string): Promise<Ticket[]> {
+  try {
+    const params = filter && filter !== "all" ? `?status=${filter === "active" ? "in_progress" : filter}` : "";
+    const data = await request<any>(`/api/tickets/assigned${params}`);
+    return data.items || data || [];
+  } catch {
+    return [];
+  }
+}
+
+// --- Messages ---
 
 export async function addMessage(
   ticketId: string,
   content: string,
-  visibility: MessageVisibility = "public"
+  visibility: "public" | "private"
 ): Promise<Message> {
-  await delay();
-
-  const newMessage: Message = {
-    id: `msg-${Date.now()}`,
-    ticketId,
-    senderId: "user-1",
-    senderType: "user",
-    visibility,
-    content,
-    contentType: "text",
-    attachments: null,
-    source: "web",
-    createdAt: new Date().toISOString(),
-    sender: mockUsers[0],
-  };
-
-  return newMessage;
+  return request<Message>("/api/messages", {
+    method: "POST",
+    body: JSON.stringify({ ticketId, content, visibility }),
+  });
 }
 
-// --- Auth APIs ---
+// --- Auth ---
 
 export async function login(
   email: string,
   password: string
 ): Promise<{ success: boolean; user?: User; error?: string }> {
-  await delay(500);
-
-  if (password.length < 4) {
-    return { success: false, error: "비밀번호는 4자 이상이어야 합니다." };
+  try {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const json = await res.json();
+    if (!json.success) {
+      return { success: false, error: json.error?.message || json.error || "로그인 실패" };
+    }
+    // 토큰 저장
+    if (json.data?.token) {
+      setToken(json.data.token);
+    }
+    return { success: true, user: json.data?.user || json.data };
+  } catch {
+    return { success: false, error: "서버에 연결할 수 없습니다." };
   }
-
-  const user = mockUsers.find((u) => u.email === email);
-
-  if (!user) {
-    return { success: false, error: "등록되지 않은 이메일입니다." };
-  }
-
-  return { success: true, user };
 }
 
-// --- Admin APIs ---
+// --- Admin ---
 
 export async function getUsers(role?: UserRole): Promise<User[]> {
-  await delay();
-
-  if (role) {
-    return mockUsers.filter((u) => u.role === role);
-  }
-  return mockUsers;
+  const params = role ? `?role=${role}` : "";
+  const data = await request<any>(`/api/admin/users${params}`);
+  return data.items || data || [];
 }
 
 export async function getAgents(): Promise<User[]> {
-  await delay();
-  return mockUsers.filter((u) => u.role === "agent_l2");
+  const data = await request<any>("/api/admin/agents");
+  return data.agents || data || [];
 }
 
+// --- Analytics ---
+
 export async function getTicketStats(): Promise<TicketStats> {
-  await delay();
-  return mockTicketStats;
+  try {
+    const now = new Date();
+    const from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const to = now.toISOString();
+    const data = await request<any>(`/api/analytics/tickets?from=${from}&to=${to}`);
+    return {
+      total: data.summary?.totalTickets || data.total || 0,
+      open: data.summary?.openTickets || data.open || 0,
+      inProgress: data.summary?.inProgressTickets || data.inProgress || 0,
+      resolved: data.summary?.resolvedTickets || data.resolved || 0,
+      closed: data.summary?.closedTickets || data.closed || 0,
+    };
+  } catch {
+    return { total: 0, open: 0, inProgress: 0, resolved: 0, closed: 0 };
+  }
 }
 
 export async function getKpiStats(): Promise<KpiStats> {
-  await delay();
-  return mockKpiStats;
+  try {
+    const now = new Date();
+    const from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const to = now.toISOString();
+    const data = await request<any>(`/api/analytics/kpi?from=${from}&to=${to}`);
+    return {
+      resolutionRate: data.aiResolutionRate?.value || data.resolutionRate || 0,
+      routingAccuracy: data.routingAccuracy?.value || data.routingAccuracy || 0,
+      avgProcessingTimeHours: data.avgProcessingTime?.value || data.avgProcessingTimeHours || 0,
+    };
+  } catch {
+    return { resolutionRate: 0, routingAccuracy: 0, avgProcessingTimeHours: 0 };
+  }
 }
 
 export async function getLlmCostStats(): Promise<LlmCostStats> {
-  await delay();
-  return mockLlmCostStats;
+  try {
+    const now = new Date();
+    const from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const to = now.toISOString();
+    const data = await request<any>(`/api/analytics/llm-cost?from=${from}&to=${to}`);
+    return {
+      totalCost: data.totalCostUsd || data.totalCost || 0,
+      byModel: (data.byModel || []).map((m: any) => ({
+        model: m.modelName || m.model || "",
+        cost: m.costUsd || m.cost || 0,
+        calls: m.requests || m.calls || 0,
+      })),
+      byPeriod: data.byPeriod || [],
+    };
+  } catch {
+    return { totalCost: 0, byModel: [], byPeriod: [] };
+  }
 }
 
-// --- Feedback APIs ---
+// --- Feedback ---
 
 export async function submitFeedback(
   messageId: string,
   rating: "positive" | "negative"
-): Promise<{ success: boolean }> {
-  await delay();
-
-  console.log(`Feedback submitted: messageId=${messageId}, rating=${rating}`);
-  return { success: true };
+): Promise<void> {
+  await request("/api/feedback", {
+    method: "POST",
+    body: JSON.stringify({ messageId, rating }),
+  });
 }
