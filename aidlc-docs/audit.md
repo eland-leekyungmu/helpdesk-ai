@@ -180,3 +180,18 @@
 **Context**: INCEPTION Phase - Units Generation 완료. 사용자 승인 대기.
 
 ---
+
+## Code Generation - Unit 2: Intake & Routing - Plan Created
+**Timestamp**: 2026-05-14T00:00:00Z
+**User Input**: "이제 unit 2를 구현할거야. API 스펙은 helpdesk-ai\docs\api-spec.md 를 따라줘."
+**AI Response**: Unit 2 코드 생성 계획 작성 완료. 12개 Step, 14개 스토리 커버.
+**Context**: CONSTRUCTION Phase - Code Generation (Unit 2: Intake & Routing) Part 1 Planning
+
+---
+
+## Code Generation - Unit 2: Intake & Routing - Complete
+**Timestamp**: 2026-05-14T00:01:00Z
+**AI Response**: Unit 2 코드 생성 완료. 총 22개 파일 생성 (타입 5, 유틸 3, 미들웨어 1, 리포지토리 5, 서비스 4, API Routes 9). TypeScript 진단 통과.
+**Context**: CONSTRUCTION Phase - Code Generation (Unit 2: Intake & Routing) Part 2 Generation 완료
+
+---

@@ -29,7 +29,7 @@
 - [x] INCEPTION - Units Generation
 - [ ] CONSTRUCTION - Design 통합 (Functional + NFR + Infra, 5유닛 일괄)
 - [ ] CONSTRUCTION - Code Generation (Unit 1: Frontend)
-- [ ] CONSTRUCTION - Code Generation (Unit 2: Intake & Routing)
+- [x] CONSTRUCTION - Code Generation (Unit 2: Intake & Routing)
 - [ ] CONSTRUCTION - Code Generation (Unit 3: AI/RAG)
 - [ ] CONSTRUCTION - Code Generation (Unit 4: Admin & Analytics)
 - [ ] CONSTRUCTION - Code Generation (Unit 5: Infrastructure)
