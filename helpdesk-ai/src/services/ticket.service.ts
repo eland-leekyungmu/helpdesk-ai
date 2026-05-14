@@ -9,8 +9,8 @@ import type { UserRole, TicketStatus } from "@/shared/types/index";
 import type { CreateTicketRequest, AssignTicketRequest, RejectAssignmentRequest } from "@/shared/types/ticket";
 import type { TicketFilters } from "@/repositories/ticket.repository";
 
-// 기본 신뢰도 임계값 (Unit 4 설정에서 동적으로 가져올 수 있음)
-const CONFIDENCE_THRESHOLD = 0.75;
+// 신뢰도 임계값 (.env에서 읽음)
+const CONFIDENCE_THRESHOLD = parseFloat(process.env.CONFIDENCE_THRESHOLD || "0.5");
 
 export const ticketService = {
   /**
@@ -64,7 +64,7 @@ export const ticketService = {
     let aiMessage = null;
 
     if (routing.type === "ai_answer" && aiResponse.confidence >= CONFIDENCE_THRESHOLD) {
-      // AI 직접 답변 → public 메시지로 저장
+      // AI 직접 답변 → public 메시지로 저장 + 티켓 완료 처리
       const msg = await messageRepository.create({
         ticketId: ticket.id,
         senderId: null,
@@ -79,6 +79,9 @@ export const ticketService = {
         confidence: aiResponse.confidence,
         sources: aiResponse.sources,
       };
+
+      // AI 자동 응답 완료 → 티켓 상태를 resolved로 변경
+      await ticketRepository.updateStatus(ticket.id, "resolved" as TicketStatus, new Date());
     } else if (routing.type === "route_to_l2") {
       // 2차 처리자 자동 분배
       await ticketRepository.updateAssignedTo(ticket.id, routing.agentId);

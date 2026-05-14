@@ -1,4 +1,5 @@
 import { messageRepository } from "@/repositories/message.repository";
+import { ticketRepository } from "@/repositories/ticket.repository";
 import * as aiService from "@/services/ai.service";
 import type { AuthUser } from "@/shared/middleware/auth";
 import type { AddMessageRequest } from "@/shared/types/message";
@@ -9,6 +10,7 @@ export const messageService = {
    * 메시지 추가
    * - agent_l2는 반드시 private visibility만 허용 (서버 강제 검증)
    * - agent_l2 private 작성 시 AI가 public 변환 자동 생성
+   * - agent_l2 응답 완료 시 티켓 상태를 resolved로 변경
    * US-3.2, US-4.2
    */
   async addMessage(input: AddMessageRequest, user: AuthUser) {
@@ -33,7 +35,7 @@ export const messageService = {
 
     let publicMessage = null;
 
-    // agent_l2 private 메시지 → AI가 public 변환 자동 생성
+    // agent_l2 private 메시지 → AI가 public 변환 자동 생성 + 티켓 완료 처리
     if (user.role === "agent_l2" && visibility === "private") {
       const result = await aiService.transformToPublic(input.content);
       const publicContent = result.publicContent;
@@ -55,6 +57,9 @@ export const messageService = {
         visibility: pubMsg.visibility as MessageVisibility,
         aiOriginalId: message.id,
       };
+
+      // 2차 처리자 응답 완료 → 티켓 상태를 resolved로 변경
+      await ticketRepository.updateStatus(input.ticketId, "resolved", new Date());
     }
 
     return {

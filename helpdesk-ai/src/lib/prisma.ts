@@ -8,8 +8,12 @@ const globalForPrisma = globalThis as unknown as {
 
 function createPrismaClient() {
   const pool = new pg.Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false },
+    host: process.env.DB_HOST || "helpdesk-ai-rds-dev.ch4qks4a8cak.ap-northeast-2.rds.amazonaws.com",
+    port: parseInt(process.env.DB_PORT || "5432"),
+    database: process.env.DB_NAME || "helpdesk",
+    user: process.env.DB_USER || "helpdesk_admin",
+    password: process.env.DB_PASSWORD || "",
+    ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
   });
   const adapter = new PrismaPg(pool);
 
