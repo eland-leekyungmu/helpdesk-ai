@@ -43,6 +43,11 @@ export const GET = withRole(['admin', 'agent_l1'], async (request: NextRequest, 
     case 'departments':
       data = await analyticsService.getDepartmentStats(period);
       break;
+    case 'trend': {
+      const days = parseInt(searchParams.get('days') || '7');
+      data = await analyticsService.getDailyTrend(days);
+      break;
+    }
     default:
       return NextResponse.json<ApiResponse>(
         { success: false, error: '유효하지 않은 type입니다.' },

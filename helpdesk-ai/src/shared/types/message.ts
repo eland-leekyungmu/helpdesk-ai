@@ -1,10 +1,11 @@
-import type { MessageVisibility, ContentType, SenderType, MessageSource } from "./index";
+import type { MessageVisibility, ContentType, SenderType, MessageSource, AttachmentMeta } from "./index";
 
 export interface AddMessageRequest {
   ticketId: string;
   content: string;
   visibility: MessageVisibility;
   contentType?: ContentType;
+  attachments?: AttachmentMeta[];
 }
 
 export interface MessageResponse {

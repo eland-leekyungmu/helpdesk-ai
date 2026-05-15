@@ -232,7 +232,42 @@ export async function transformToPublic(privateContent: string): Promise<{
       temperature: 0.3,
     });
 
-    return { publicContent: response.content, usage: response };
+    const content = response.content.trim();
+
+    // LLM이 거절/변환 불가 응답을 했는지 감지
+    const refusalKeywords = [
+      '변환하기 어렵', '내용이 너무 부족', '충분한 내용', '다시 제공',
+      '변환할 수 없', '답변을 생성하기 어렵', '정보가 부족',
+    ];
+    const isRefusal = refusalKeywords.some((kw) => content.includes(kw));
+
+    if (isRefusal) {
+      // 거절 감지 시 — 원본을 그대로 쓰지 않고 재시도 (더 강한 지시로)
+      const retryPrompt = `당신은 IT Help Desk 고객 응대 담당자입니다.
+IT 담당자가 남긴 메모: "${privateContent}"
+
+이 메모의 의도를 파악하여 고객에게 전달할 정중하고 완성된 한국어 답변을 작성하세요.
+메모가 짧거나 불명확해도 반드시 고객 응대 문장으로 완성해야 합니다.
+답변만 출력하세요.`;
+
+      try {
+        const retryResponse = await invokeModel({
+          prompt: retryPrompt,
+          modelType: 'lightweight',
+          maxTokens: 1024,
+          temperature: 0.5,
+        });
+        return { publicContent: retryResponse.content.trim(), usage: response };
+      } catch {
+        // 재시도도 실패 시 — 담당자 확인 안내로 대체
+        return {
+          publicContent: "문의하신 내용을 검토하였습니다. 담당자가 추가 확인 후 상세한 안내를 드리겠습니다. 불편을 드려 죄송합니다.",
+          usage: response,
+        };
+      }
+    }
+
+    return { publicContent: content, usage: response };
   } catch {
     // 실패 시 원본 반환 (내용 보존 우선)
     return {
@@ -347,7 +382,6 @@ async function findAgentByTeam(teamName: string) {
 
   return agent;
 }
-
 // ─── 프롬프트 빌더 ─────────────────────────────────────────
 
 function buildIntentPrompt(question: string): string {
@@ -380,8 +414,10 @@ ${question}
 규칙:
 - department와 team은 위 조직 구조에서 선택
 - categories는 위 카테고리 목록에서 최대 10개 선택
+- 반드시 위 카테고리 목록 중 가장 적합한 것을 선택해야 함 (목록 외 카테고리 사용 금지)
 - 첨부파일에 오류 화면, 시스템 화면 등이 있으면 해당 시스템을 파악하여 분류
-- 판단이 어려우면 department: "", team: "", categories: ["기타"]`;
+- 판단이 어려운 경우에도 반드시 목록 중 가장 유사한 카테고리를 선택할 것 (빈 배열 금지)
+- 판단이 어려우면 department: "", team: "", categories: ["계정/권한 관리"]`;
 }
 
 function buildAnswerPrompt(question: string, ragResults: RAGResult[]): string {
@@ -409,33 +445,47 @@ ${question}
 
 function buildTransformPrompt(privateContent: string): string {
   return `당신은 IT Help Desk 고객 응대 전문가입니다.
-아래 내부 답변을 고객에게 전달할 수 있는 형태로 변환하세요.
+IT 담당자가 내부적으로 남긴 메모를 보고, 고객에게 전달할 정중하고 완성된 답변을 직접 작성하세요.
 
-[변환 규칙]
-- 내부 호칭(직급, 이름)을 일반 호칭으로 변경
-- 내부 시스템명이나 프로세스명을 일반적인 표현으로 대체
-- 문체를 친절하고 정중한 고객 응대 문체로 통일
-- ⚠️ 절대 금지: 답변의 사실적 내용, 정보, 지시사항, 절차를 변경하지 마세요
+[중요 원칙]
+- 당신이 직접 고객에게 답변을 작성하는 것입니다
+- 내부 메모의 핵심 의미와 결론을 파악하여 고객이 이해할 수 있는 완성된 문장으로 작성하세요
+- 내부 메모가 짧거나 구어체여도 그 의도를 파악하여 정중한 고객 응대 문장으로 완성하세요
+- 예시: 내부 메모 "글쎄요" → 고객 답변 "문의하신 내용을 검토한 결과, 현재 명확한 해결 방법을 확인하기 어려운 상황입니다. 추가 확인 후 다시 안내드리겠습니다."
+- 예시: 내부 메모 "안됨" → 고객 답변 "문의하신 사항은 현재 정책상 처리가 어렵습니다. 불편을 드려 죄송합니다."
+- 예시: 내부 메모 "비밀번호 초기화하면 됨" → 고객 답변 "비밀번호를 초기화하시면 문제가 해결됩니다. 비밀번호 초기화는 [방법]을 통해 진행하실 수 있습니다."
 
-[내부 답변]
+[절대 금지]
+- "변환하기 어렵습니다", "내용이 부족합니다" 등 거절 문구 사용 금지
+- 내부 메모를 그대로 복사하여 전달 금지
+- 내부 직원 간 표현(직급, 내부 시스템명, 구어체) 그대로 사용 금지
+- 고객에게 "글쎄요", "모르겠어요" 등 불확실한 표현 전달 금지
+
+[내부 담당자 메모]
 ${privateContent}
 
-[변환된 답변]`;
+위 메모의 의미를 파악하여 고객에게 전달할 완성된 답변만 작성하세요.`;
 }
 
 function parseIntentResponse(content: string): IntentResult {
   try {
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      return { department: '', team: '', categories: ['기타'] };
+      return { department: '', team: '', categories: ['계정/권한 관리'] };
     }
     const parsed = JSON.parse(jsonMatch[0]);
+    const categories: string[] = Array.isArray(parsed.categories) ? parsed.categories : ['계정/권한 관리'];
+
+    // '기타' 카테고리가 포함된 경우 제거하고, 남은 카테고리가 없으면 '계정/권한 관리'로 대체
+    const filtered = categories.filter((c) => c !== '기타');
+    const finalCategories = filtered.length > 0 ? filtered : ['계정/권한 관리'];
+
     return {
       department: parsed.department || '',
       team: parsed.team || '',
-      categories: Array.isArray(parsed.categories) ? parsed.categories : ['기타'],
+      categories: finalCategories,
     };
   } catch {
-    return { department: '', team: '', categories: ['기타'] };
+    return { department: '', team: '', categories: ['계정/권한 관리'] };
   }
 }

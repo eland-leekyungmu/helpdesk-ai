@@ -4,10 +4,25 @@ import { assignmentRepository } from "@/repositories/assignment.repository";
 import { userRepository } from "@/repositories/user.repository";
 import * as aiService from "@/services/ai.service";
 import { generateTicketNumber } from "@/shared/utils/ticket-number";
+import { prisma } from "@/lib/prisma";
 import type { AuthUser } from "@/shared/middleware/auth";
 import type { UserRole, TicketStatus } from "@/shared/types/index";
 import type { CreateTicketRequest, AssignTicketRequest, RejectAssignmentRequest } from "@/shared/types/ticket";
 import type { TicketFilters } from "@/repositories/ticket.repository";
+
+/** 특정 팀에서 excludeIds를 제외한 agent_l2 조회 */
+async function findAgentByTeamExcluding(teamName: string, excludeIds: string[]) {
+  if (!teamName) return null;
+  return prisma.user.findFirst({
+    where: {
+      role: "agent_l2",
+      isActive: true,
+      id: excludeIds.length > 0 ? { notIn: excludeIds } : undefined,
+      team: { name: teamName },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+}
 
 // 신뢰도 임계값 (.env에서 읽음)
 const CONFIDENCE_THRESHOLD = parseFloat(process.env.CONFIDENCE_THRESHOLD || "0.5");
@@ -80,8 +95,8 @@ export const ticketService = {
         sources: aiResponse.sources,
       };
 
-      // AI 자동 응답 완료 → 티켓 상태를 resolved로 변경
-      await ticketRepository.updateStatus(ticket.id, "resolved" as TicketStatus, new Date());
+      // AI 자동 응답 완료 → 티켓 상태를 resolved로 변경 + resolutionType 저장
+      await ticketRepository.updateStatus(ticket.id, "resolved" as TicketStatus, new Date(), "ai_auto");
     } else if (routing.type === "route_to_l2") {
       // 2차 처리자 자동 분배
       await ticketRepository.updateAssignedTo(ticket.id, routing.agentId);
@@ -135,8 +150,37 @@ export const ticketService = {
         contentType: m.contentType,
         source: m.source,
         aiOriginalId: m.aiOriginalId,
+        attachments: (m.attachments as any[] | null) ?? [],
         createdAt: m.createdAt.toISOString(),
       }));
+
+    // agent 역할일 때: assignment comment를 private 메시지로 합침 (기존 분배 건 호환)
+    if (!isEmployee) {
+      for (const a of ticket.assignments) {
+        if (a.comment) {
+          // 동일 시각에 이미 메시지로 저장된 comment는 중복 방지
+          const alreadyExists = messages.some(
+            (m) => m.senderType === "agent_l1" && m.visibility === "private" && m.content === a.comment
+          );
+          if (!alreadyExists) {
+            messages.push({
+              id: `assignment-${a.id}`,
+              senderType: "agent_l1",
+              senderName: a.assigner?.name ?? "1차 처리자",
+              visibility: "private",
+              content: a.comment,
+              contentType: "text",
+              source: "web",
+              aiOriginalId: null,
+              attachments: [],
+              createdAt: a.createdAt.toISOString(),
+            });
+          }
+        }
+      }
+      // 시간순 정렬
+      messages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    }
 
     const assignments = isEmployee
       ? undefined
@@ -144,8 +188,10 @@ export const ticketService = {
           id: a.id,
           assignedTo: a.assignedTo,
           assignedToName: a.assignee.name,
+          assignedByName: a.assigner?.name ?? null,
           assignmentType: a.assignmentType,
           status: a.status,
+          rejectedReason: a.rejectedReason ?? null,
           createdAt: a.createdAt.toISOString(),
         }));
 
@@ -255,20 +301,47 @@ export const ticketService = {
       throw new Error("INVALID_ASSIGNEE");
     }
 
-    // 기존 활성 분배 완료 처리
-    await assignmentRepository.deactivateByTicketId(input.ticketId);
+    // 트랜잭션으로 원자성 보장 (동시 배정 방지)
+    const { assignment } = await prisma.$transaction(async (tx) => {
+      // 기존 활성 분배 완료 처리
+      await tx.ticketAssignment.updateMany({
+        where: { ticketId: input.ticketId, status: "active" },
+        data: { status: "completed" },
+      });
 
-    // 새 분배 생성
-    const assignment = await assignmentRepository.create({
-      ticketId: input.ticketId,
-      assignedTo: input.assignedTo,
-      assignedBy: assignedBy.id,
-      assignmentType: "manual",
-      comment: input.comment,
+      // 새 분배 생성
+      const assignment = await tx.ticketAssignment.create({
+        data: {
+          ticketId: input.ticketId,
+          assignedTo: input.assignedTo,
+          assignedBy: assignedBy.id,
+          assignmentType: "manual",
+          status: "active",
+          comment: input.comment ?? undefined,
+        },
+        include: { assignee: { select: { id: true, name: true } } },
+      });
+
+      // 티켓 담당자 업데이트
+      await tx.ticket.update({
+        where: { id: input.ticketId },
+        data: { assignedTo: input.assignedTo, status: "in_progress" },
+      });
+
+      return { assignment };
     });
 
-    // 티켓 담당자 업데이트
-    await ticketRepository.updateAssignedTo(input.ticketId, input.assignedTo);
+    // 이관 메시지가 있으면 private 메시지로 저장 (트랜잭션 외부 — 실패해도 분배는 유지)
+    if (input.comment) {
+      await messageRepository.create({
+        ticketId: input.ticketId,
+        senderId: assignedBy.id,
+        senderType: "agent_l1",
+        visibility: "private",
+        content: input.comment,
+        source: "web",
+      });
+    }
 
     return {
       id: assignment.id,
@@ -306,10 +379,17 @@ export const ticketService = {
       input.suggestedUserId
     );
 
-    // 재분배 로직: previousAssignees 제외
+    // 재분배 로직: 이전 배정자 전원 제외 (본인 포함)
     const previousAssignees = await assignmentRepository.getPreviousAssignees(assignment.ticketId);
 
-    if (input.suggestedUserId && !previousAssignees.includes(input.suggestedUserId)) {
+    if (input.suggestedUserId) {
+      // 추천 담당자가 이전 배정자에 포함되면 거부
+      if (previousAssignees.includes(input.suggestedUserId)) {
+        // 추천 담당자가 이미 거절한 사람 → 1차 처리자 큐로 에스컬레이션
+        await ticketRepository.updateAssignedTo(assignment.ticketId, null);
+        await ticketRepository.updateStatus(assignment.ticketId, "open" as TicketStatus);
+        return { reassignedTo: null };
+      }
       // 추천 담당자로 재분배
       const newAssignment = await assignmentRepository.create({
         ticketId: assignment.ticketId,
@@ -320,7 +400,25 @@ export const ticketService = {
       return { reassignedTo: newAssignment.assignedTo };
     }
 
-    // 추천 없으면 1차 처리자 큐로 에스컬레이션
+    // 추천 없으면 AI 재분배 시도 — previousAssignees 제외
+    // 현재 담당자의 팀명을 DB에서 직접 조회
+    const currentAssignee = await prisma.user.findUnique({
+      where: { id: assignment.assignedTo },
+      include: { team: { select: { name: true } } },
+    });
+    const teamName = currentAssignee?.team?.name ?? "";
+    const agent = await findAgentByTeamExcluding(teamName, previousAssignees);
+    if (agent) {
+      const newAssignment = await assignmentRepository.create({
+        ticketId: assignment.ticketId,
+        assignedTo: agent.id,
+        assignmentType: "reassign",
+      });
+      await ticketRepository.updateAssignedTo(assignment.ticketId, agent.id);
+      return { reassignedTo: newAssignment.assignedTo };
+    }
+
+    // 재분배 가능한 담당자 없음 → 1차 처리자 큐로 에스컬레이션
     await ticketRepository.updateAssignedTo(assignment.ticketId, null);
     await ticketRepository.updateStatus(assignment.ticketId, "open" as TicketStatus);
     return { reassignedTo: null };

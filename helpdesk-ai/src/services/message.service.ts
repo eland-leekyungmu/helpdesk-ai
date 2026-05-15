@@ -31,9 +31,15 @@ export const messageService = {
       content: input.content,
       contentType: input.contentType ?? "text",
       source: "web",
+      attachments: input.attachments ?? undefined,
     });
 
     let publicMessage = null;
+
+    // agent_l1 public 메시지 → 티켓 완료 처리 (resolutionType: agent_l1)
+    if (user.role === "agent_l1" && visibility === "public") {
+      await ticketRepository.updateStatus(input.ticketId, "resolved", new Date(), "agent_l1");
+    }
 
     // agent_l2 private 메시지 → AI가 public 변환 자동 생성 + 티켓 완료 처리
     if (user.role === "agent_l2" && visibility === "private") {
@@ -58,8 +64,8 @@ export const messageService = {
         aiOriginalId: message.id,
       };
 
-      // 2차 처리자 응답 완료 → 티켓 상태를 resolved로 변경
-      await ticketRepository.updateStatus(input.ticketId, "resolved", new Date());
+      // 2차 처리자 응답 완료 → 티켓 상태를 resolved로 변경 (resolutionType: agent_l2)
+      await ticketRepository.updateStatus(input.ticketId, "resolved", new Date(), "agent_l2");
     }
 
     return {

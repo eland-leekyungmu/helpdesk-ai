@@ -1,56 +1,65 @@
-import { TicketStatus, TicketPriority, MessageVisibility } from "@/shared/types";
-
-type BadgeVariant = "default" | "success" | "warning" | "danger" | "info" | "purple";
+import type { TicketStatus, Priority, MessageVisibility } from "@/shared/types";
 
 interface BadgeProps {
-  variant?: BadgeVariant;
   children: React.ReactNode;
   className?: string;
 }
 
-const variantStyles: Record<BadgeVariant, string> = {
-  default: "bg-gray-100 text-gray-800",
-  success: "bg-green-100 text-green-800",
-  warning: "bg-yellow-100 text-yellow-800",
-  danger: "bg-red-100 text-red-800",
-  info: "bg-blue-100 text-blue-800",
-  purple: "bg-purple-100 text-purple-800",
-};
-
-export function Badge({ variant = "default", children, className = "" }: BadgeProps) {
+export function Badge({ children, className = "" }: BadgeProps) {
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${variantStyles[variant]} ${className}`}>
+    <span
+      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${className}`}
+    >
       {children}
     </span>
   );
 }
 
+const statusConfig: Record<TicketStatus, { label: string; className: string; dot: string; title: string }> = {
+  open:        { label: "접수",   className: "bg-blue-50 text-blue-700 ring-1 ring-blue-200",    dot: "bg-blue-500",    title: "접수됨 — IT 헬프데스크 처리 대기 중" },
+  in_progress: { label: "진행중", className: "bg-amber-50 text-amber-700 ring-1 ring-amber-200", dot: "bg-amber-500",   title: "처리 중 — 담당자가 처리하고 있습니다" },
+  resolved:    { label: "해결",   className: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200", dot: "bg-emerald-500", title: "해결됨 — 처리 완료, 요청자 확인 대기" },
+  closed:      { label: "종료",   className: "bg-gray-100 text-gray-600 ring-1 ring-gray-200",   dot: "bg-gray-400",    title: "종료됨 — 최종 완료" },
+};
+
 export function StatusBadge({ status }: { status: TicketStatus }) {
-  const config: Record<TicketStatus, { variant: BadgeVariant; label: string }> = {
-    open: { variant: "info", label: "접수" },
-    in_progress: { variant: "warning", label: "진행중" },
-    resolved: { variant: "success", label: "해결" },
-    closed: { variant: "default", label: "종료" },
-  };
-  const { variant, label } = config[status];
-  return <Badge variant={variant}>{label}</Badge>;
+  const config = statusConfig[status] ?? statusConfig.open;
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${config.className}`}
+      title={config.title}
+    >
+      <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
+      {config.label}
+    </span>
+  );
 }
 
-export function PriorityBadge({ priority }: { priority: TicketPriority }) {
-  const config: Record<TicketPriority, { variant: BadgeVariant; label: string }> = {
-    low: { variant: "default", label: "낮음" },
-    medium: { variant: "warning", label: "보통" },
-    high: { variant: "danger", label: "높음" },
-  };
-  const { variant, label } = config[priority];
-  return <Badge variant={variant}>{label}</Badge>;
+const priorityConfig: Record<Priority, { label: string; className: string }> = {
+  high:   { label: "긴급", className: "bg-red-50 text-red-700 ring-1 ring-red-200" },
+  medium: { label: "보통", className: "bg-amber-50 text-amber-700 ring-1 ring-amber-200" },
+  low:    { label: "낮음", className: "bg-green-50 text-green-700 ring-1 ring-green-200" },
+};
+
+export function PriorityBadge({ priority }: { priority: Priority }) {
+  const config = priorityConfig[priority] ?? priorityConfig.medium;
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.className}`}>
+      {config.label}
+    </span>
+  );
 }
+
+const visibilityConfig: Record<MessageVisibility, { label: string; className: string }> = {
+  public:  { label: "Public",  className: "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200" },
+  private: { label: "Private", className: "bg-purple-50 text-purple-700 ring-1 ring-purple-200" },
+};
 
 export function VisibilityBadge({ visibility }: { visibility: MessageVisibility }) {
-  const config: Record<MessageVisibility, { variant: BadgeVariant; label: string }> = {
-    public: { variant: "info", label: "Public" },
-    private: { variant: "purple", label: "Private" },
-  };
-  const { variant, label } = config[visibility];
-  return <Badge variant={variant}>{label}</Badge>;
+  const config = visibilityConfig[visibility];
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.className}`}>
+      {config.label}
+    </span>
+  );
 }

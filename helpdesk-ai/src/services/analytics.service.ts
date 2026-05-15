@@ -207,6 +207,35 @@ export class AnalyticsService {
 
     return results;
   }
+
+  /**
+   * 일별 티켓 추이 (최근 N일)
+   */
+  async getDailyTrend(days: number = 7): Promise<{ date: string; 접수: number; 해결: number }[]> {
+    const result: { date: string; 접수: number; 해결: number }[] = [];
+
+    for (let i = days - 1; i >= 0; i--) {
+      const start = new Date();
+      start.setDate(start.getDate() - i);
+      start.setHours(0, 0, 0, 0);
+
+      const end = new Date(start);
+      end.setHours(23, 59, 59, 999);
+
+      const [created, resolved] = await Promise.all([
+        prisma.ticket.count({ where: { createdAt: { gte: start, lte: end } } }),
+        prisma.ticket.count({ where: { resolvedAt: { gte: start, lte: end } } }),
+      ]);
+
+      result.push({
+        date: `${start.getMonth() + 1}/${start.getDate()}`,
+        접수: created,
+        해결: resolved,
+      });
+    }
+
+    return result;
+  }
 }
 
 export const analyticsService = new AnalyticsService();

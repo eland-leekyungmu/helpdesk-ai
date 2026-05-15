@@ -45,7 +45,10 @@ export const ticketRepository = {
         messages: { orderBy: { createdAt: "asc" }, include: { sender: { select: { id: true, name: true, role: true } } } },
         assignments: {
           orderBy: { createdAt: "desc" },
-          include: { assignee: { select: { id: true, name: true } } },
+          include: {
+            assignee: { select: { id: true, name: true } },
+            assigner: { select: { id: true, name: true } },
+          },
         },
       },
     });
@@ -110,10 +113,14 @@ export const ticketRepository = {
     return { items, total };
   },
 
-  async updateStatus(id: string, status: TicketStatus, resolvedAt?: Date) {
+  async updateStatus(id: string, status: TicketStatus, resolvedAt?: Date, resolutionType?: string) {
     return prisma.ticket.update({
       where: { id },
-      data: { status, ...(resolvedAt && { resolvedAt }) },
+      data: {
+        status,
+        ...(resolvedAt && { resolvedAt }),
+        ...(resolutionType && { resolutionType: resolutionType as any }),
+      },
     });
   },
 

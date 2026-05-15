@@ -45,7 +45,18 @@ export default function AdminTicketDetailPage() {
       <Card className="mb-4">
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div><span className="text-gray-500">담당자</span><p className="font-medium">{ticket.assignee?.name || "미배정"}</p></div>
+            <div>
+              <span className="text-gray-500">담당자</span>
+              <p className="font-medium">
+                {(ticket as any).assignedToName || ticket.assignee?.name
+                  ? ((ticket as any).assignedToName || ticket.assignee?.name)
+                  : ticket.assignedTo
+                  ? "배정됨"
+                  : ticket.status === "open" || ticket.status === "in_progress"
+                  ? "IT 헬프데스크"
+                  : "미배정"}
+              </p>
+            </div>
             <div><span className="text-gray-500">접수 경로</span><p className="font-medium">{ticket.createdVia === "web" ? "웹" : "이메일"}</p></div>
             <div><span className="text-gray-500">신뢰도</span><p className="font-medium">{ticket.confidenceScore ? `${(ticket.confidenceScore * 100).toFixed(0)}%` : "-"}</p></div>
             <div><span className="text-gray-500">해결 유형</span><p className="font-medium">{ticket.resolutionType || "-"}</p></div>
@@ -77,10 +88,10 @@ export default function AdminTicketDetailPage() {
               <CardContent>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-sm font-medium text-gray-700">
-                    {msg.senderType === "user" && `👤 ${msg.sender?.name || "요청자"}`}
+                    {msg.senderType === "user" && `👤 ${ (msg as any).senderName || msg.sender?.name || "요청자"}`}
                     {msg.senderType === "ai" && "🤖 AI"}
-                    {msg.senderType === "agent_l1" && `🟢 ${msg.sender?.name || "1차 처리자"}`}
-                    {msg.senderType === "agent_l2" && `🔵 ${msg.sender?.name || "2차 처리자"}`}
+                    {msg.senderType === "agent_l1" && `🟢 ${(msg as any).senderName || msg.sender?.name || "1차 처리자"}`}
+                    {msg.senderType === "agent_l2" && `🔵 ${(msg as any).senderName || msg.sender?.name || "2차 처리자"}`}
                     {msg.senderType === "system" && "⚙️ 시스템"}
                   </span>
                   <VisibilityBadge visibility={msg.visibility} />

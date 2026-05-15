@@ -3,10 +3,10 @@ import { requireAuth } from "@/shared/middleware/auth";
 import { prisma } from "@/lib/prisma";
 
 /**
- * GET /api/admin/tickets - 전체 티켓 조회 (admin 전용)
+ * GET /api/admin/tickets - 전체 티켓 조회 (admin, agent_l1)
  */
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth(request, ["admin"]);
+  const auth = await requireAuth(request, ["admin", "agent_l1"]);
   if ("error" in auth) {
     return NextResponse.json(
       { success: false, error: auth.error.message },

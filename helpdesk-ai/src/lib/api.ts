@@ -52,18 +52,21 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 
 export async function createTicket(
   subject: string,
-  content: string
+  content: string,
+  attachments?: { key: string; filename: string; size: number; mimeType: string; url: string }[]
 ): Promise<{
   ticketNumber: string;
+  ticketId?: string;
   aiResponse: string | null;
   suggestedCategories: string[];
 }> {
   const data = await request<any>("/api/tickets", {
     method: "POST",
-    body: JSON.stringify({ subject, content }),
+    body: JSON.stringify({ subject, content, attachments }),
   });
   return {
     ticketNumber: data.ticketNumber || data.ticket_number || "HD-0000",
+    ticketId: data.id || data.ticketId,
     aiResponse: data.aiResponse?.content || data.aiResponse || null,
     suggestedCategories: data.category || data.suggestedCategories || [],
   };
@@ -112,11 +115,12 @@ export async function getAssignedTickets(filter?: string): Promise<Ticket[]> {
 export async function addMessage(
   ticketId: string,
   content: string,
-  visibility: "public" | "private"
+  visibility: "public" | "private",
+  attachments?: { key: string; filename: string; size: number; mimeType: string }[]
 ): Promise<Message> {
   return request<Message>("/api/messages", {
     method: "POST",
-    body: JSON.stringify({ ticketId, content, visibility }),
+    body: JSON.stringify({ ticketId, content, visibility, attachments }),
   });
 }
 
@@ -167,12 +171,14 @@ export async function getTicketStats(): Promise<TicketStats> {
     const from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     const to = now.toISOString();
     const data = await request<any>(`/api/analytics/tickets?from=${from}&to=${to}`);
+    // API 응답: { total, byStatus: { open, in_progress, resolved, closed }, byResolutionType }
+    const byStatus = data.byStatus || {};
     return {
-      total: data.summary?.totalTickets || data.total || 0,
-      open: data.summary?.openTickets || data.open || 0,
-      inProgress: data.summary?.inProgressTickets || data.inProgress || 0,
-      resolved: data.summary?.resolvedTickets || data.resolved || 0,
-      closed: data.summary?.closedTickets || data.closed || 0,
+      total: data.total ?? data.summary?.totalTickets ?? 0,
+      open: byStatus.open ?? data.summary?.openTickets ?? data.open ?? 0,
+      inProgress: byStatus.in_progress ?? data.summary?.inProgressTickets ?? data.inProgress ?? 0,
+      resolved: byStatus.resolved ?? data.summary?.resolvedTickets ?? data.resolved ?? 0,
+      closed: byStatus.closed ?? data.summary?.closedTickets ?? data.closed ?? 0,
     };
   } catch {
     return { total: 0, open: 0, inProgress: 0, resolved: 0, closed: 0 };
@@ -186,21 +192,44 @@ export async function getKpiStats(): Promise<KpiStats> {
     const to = now.toISOString();
     const data = await request<any>(`/api/analytics/kpi?from=${from}&to=${to}`);
     return {
-      resolutionRate: data.aiResolutionRate?.value || data.resolutionRate || 0,
-      routingAccuracy: data.routingAccuracy?.value || data.routingAccuracy || 0,
-      avgProcessingTimeHours: data.avgProcessingTime?.value || data.avgProcessingTimeHours || 0,
+      // API 응답: { resolution: { rate }, routing: { rate }, processing: { avg, unit } }
+      resolutionRate: data.resolution?.rate ?? data.aiResolutionRate?.value ?? data.resolutionRate ?? 0,
+      routingAccuracy: data.routing?.rate ?? data.routingAccuracy?.value ?? data.routingAccuracy ?? 0,
+      // processing.avg는 분 단위 → 시간으로 변환
+      avgProcessingTimeHours:
+        data.processing?.avg != null
+          ? data.processing.avg / 60
+          : data.avgProcessingTime?.value ?? data.avgProcessingTimeHours ?? 0,
     };
   } catch {
     return { resolutionRate: 0, routingAccuracy: 0, avgProcessingTimeHours: 0 };
   }
 }
 
-export async function getLlmCostStats(): Promise<LlmCostStats> {
+export async function getLlmCostStats(period: "day" | "week" | "month" = "month"): Promise<LlmCostStats> {
   try {
     const now = new Date();
-    const from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    const to = now.toISOString();
-    const data = await request<any>(`/api/analytics/llm-cost?from=${from}&to=${to}`);
+    let from: Date;
+
+    switch (period) {
+      case "day":
+        from = new Date(now);
+        from.setDate(from.getDate() - 1);
+        break;
+      case "week":
+        from = new Date(now);
+        from.setDate(from.getDate() - 7);
+        break;
+      case "month":
+      default:
+        from = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
+    }
+
+    const groupBy = period === "day" ? "day" : period === "week" ? "day" : "day";
+    const data = await request<any>(
+      `/api/analytics/llm-cost?from=${from.toISOString()}&to=${now.toISOString()}&groupBy=${groupBy}`
+    );
     return {
       totalCost: data.totalCostUsd || data.totalCost || 0,
       byModel: (data.byModel || []).map((m: any) => ({
@@ -213,6 +242,49 @@ export async function getLlmCostStats(): Promise<LlmCostStats> {
   } catch {
     return { totalCost: 0, byModel: [], byPeriod: [] };
   }
+}
+
+// --- Attachments ---
+
+export interface UploadFileInfo {
+  filename: string;
+  mimeType: string;
+  size: number;
+}
+
+export interface UploadResult {
+  uploadUrl: string;
+  key: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+}
+
+export async function getUploadUrls(
+  ticketId: string,
+  files: UploadFileInfo[]
+): Promise<UploadResult[]> {
+  return request<UploadResult[]>("/api/attachments/upload", {
+    method: "POST",
+    body: JSON.stringify({ ticketId, files }),
+  });
+}
+
+export async function uploadFileToS3(uploadUrl: string, file: File): Promise<void> {
+  const res = await fetch(uploadUrl, {
+    method: "PUT",
+    body: file,
+    headers: { "Content-Type": file.type },
+  });
+  if (!res.ok) throw new Error(`S3 업로드 실패: ${res.status}`);
+}
+
+export async function getDownloadUrl(key: string, filename: string): Promise<string> {
+  const data = await request<{ downloadUrl: string }>("/api/attachments/download", {
+    method: "POST",
+    body: JSON.stringify({ key, filename }),
+  });
+  return data.downloadUrl;
 }
 
 // --- Feedback ---
