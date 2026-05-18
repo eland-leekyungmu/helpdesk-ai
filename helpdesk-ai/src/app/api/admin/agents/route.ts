@@ -6,7 +6,7 @@ import type { ApiResponse, TokenPayload } from '@/shared/types';
 /**
  * GET /api/admin/agents - 2차 처리자 목록
  */
-export const GET = withRole(['admin', 'agent_l1'], async (request: NextRequest, _payload: TokenPayload) => {
+export const GET = withRole(['admin', 'agent_l1', 'agent_l2'], async (request: NextRequest, _payload: TokenPayload) => {
   const { searchParams } = new URL(request.url);
   const teamId = searchParams.get('teamId') || undefined;
   const isActive = searchParams.has('isActive')

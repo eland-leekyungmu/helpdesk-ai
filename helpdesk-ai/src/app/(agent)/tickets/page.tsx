@@ -3,10 +3,16 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Ticket } from "@/shared/types";
-import { StatusBadge, PriorityBadge } from "@/components/ui";
-import { Card, CardContent } from "@/components/ui";
+import { StatusBadge, PriorityBadge, Card, CardContent, EmptyState, SkeletonList } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
 import { getAssignedTickets } from "@/lib/api";
+import { ChevronRight, Clock } from "lucide-react";
+
+const FILTERS = [
+  { value: "active",   label: "진행중" },
+  { value: "all",      label: "전체" },
+  { value: "resolved", label: "해결됨" },
+] as const;
 
 export default function AgentTicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -21,48 +27,60 @@ export default function AgentTicketsPage() {
   }, [filter]);
 
   return (
-    <div>
+    <div className="animate-fade-in">
       <PageHeader title="담당 티켓" description="나에게 배정된 티켓 목록" />
 
+      {/* Filter */}
       <div className="flex gap-2 mb-4">
-        {(["active", "all", "resolved"] as const).map((f) => (
+        {FILTERS.map((f) => (
           <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-              filter === f ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
+            key={f.value}
+            onClick={() => setFilter(f.value)}
+            className={`
+              px-3.5 py-1.5 rounded-full text-sm font-medium transition-all
+              ${filter === f.value
+                ? "bg-violet-600 text-white shadow-sm"
+                : "bg-white text-gray-600 border border-gray-200 hover:border-violet-300 hover:text-violet-600"
+              }
+            `}
           >
-            {f === "active" && "진행중"}
-            {f === "all" && "전체"}
-            {f === "resolved" && "해결됨"}
+            {f.label}
           </button>
         ))}
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center h-64"><p className="text-gray-500">로딩 중...</p></div>
+        <SkeletonList count={4} />
       ) : tickets.length === 0 ? (
-        <Card><CardContent><p className="text-center text-gray-500 py-8">배정된 티켓이 없습니다.</p></CardContent></Card>
+        <EmptyState
+          title="배정된 티켓이 없습니다"
+          description={filter === "active" ? "현재 진행 중인 티켓이 없습니다." : "해당 조건의 티켓이 없습니다."}
+        />
       ) : (
         <div className="space-y-3">
           {tickets.map((ticket) => (
             <Link key={ticket.id} href={`/tickets/${ticket.id}`}>
-              <Card className="hover:border-blue-300 transition-colors cursor-pointer">
+              <Card hoverable>
                 <CardContent>
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs text-gray-400">#{ticket.ticketNumber}</span>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                        <span className="text-xs font-mono text-gray-400">#{ticket.ticketNumber}</span>
                         <StatusBadge status={ticket.status} />
                         <PriorityBadge priority={ticket.priority} />
                       </div>
-                      <h3 className="font-medium text-gray-900">{ticket.subject}</h3>
-                      <p className="text-sm text-gray-500 mt-1">요청자: {ticket.requester?.name || "알 수 없음"}</p>
+                      <h3 className="font-medium text-gray-900 truncate">{ticket.subject}</h3>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="text-xs text-gray-500">
+                          요청자: {(ticket as any).requesterName || ticket.requester?.name || "알 수 없음"}
+                        </span>
+                        <span className="flex items-center gap-1 text-xs text-gray-400">
+                          <Clock size={10} />
+                          {new Date(ticket.createdAt).toLocaleDateString("ko-KR")}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-right text-sm text-gray-500">
-                      <p>{new Date(ticket.createdAt).toLocaleDateString("ko-KR")}</p>
-                    </div>
+                    <ChevronRight size={16} className="text-gray-300 shrink-0" />
                   </div>
                 </CardContent>
               </Card>

@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
         content: body.content,
         visibility: body.visibility ?? "public",
         contentType: body.contentType,
+        attachments: body.attachments,
       },
       auth.user
     );

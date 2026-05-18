@@ -3,7 +3,7 @@
 // 소유 유닛: Unit 3 (AI/RAG) — 공유 참조
 // ============================================================
 
-/** 사전 정의 카테고리 목록 (closed set, 23개) */
+/** 사전 정의 카테고리 목록 (closed set, 22개) */
 export const CATEGORIES = [
   '웹/앱 개발',
   'ERP 시스템',
@@ -27,7 +27,6 @@ export const CATEGORIES = [
   '세무/행정',
   '홍보/마케팅 시스템',
   '계정/권한 관리',
-  '기타',
 ] as const;
 
 export type Category = (typeof CATEGORIES)[number];
@@ -68,5 +67,5 @@ export const CATEGORY_TEAM_MAP: Record<string, { department: string; team: strin
   '세무/행정': { department: '재무부서', team: '세무행정팀' },
   '홍보/마케팅 시스템': { department: '홍보부서', team: '홍보마케팅팀' },
   '계정/권한 관리': { department: '', team: '' }, // 1차 처리자 판단
-  '기타': { department: '', team: '' }, // 1차 처리자 큐
+  '기타': { department: '', team: '' }, // 1차 처리자 큐 — 제거됨 (하위 호환용)
 };
