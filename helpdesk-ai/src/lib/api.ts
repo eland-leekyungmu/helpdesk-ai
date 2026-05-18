@@ -167,12 +167,13 @@ export async function getTicketStats(): Promise<TicketStats> {
     const from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     const to = now.toISOString();
     const data = await request<any>(`/api/analytics/tickets?from=${from}&to=${to}`);
+    // API 반환: { total, byStatus: { open, in_progress, resolved, closed }, byResolutionType }
     return {
-      total: data.summary?.totalTickets || data.total || 0,
-      open: data.summary?.openTickets || data.open || 0,
-      inProgress: data.summary?.inProgressTickets || data.inProgress || 0,
-      resolved: data.summary?.resolvedTickets || data.resolved || 0,
-      closed: data.summary?.closedTickets || data.closed || 0,
+      total: data.total || 0,
+      open: data.byStatus?.open || 0,
+      inProgress: data.byStatus?.in_progress || 0,
+      resolved: data.byStatus?.resolved || 0,
+      closed: data.byStatus?.closed || 0,
     };
   } catch {
     return { total: 0, open: 0, inProgress: 0, resolved: 0, closed: 0 };
@@ -185,10 +186,13 @@ export async function getKpiStats(): Promise<KpiStats> {
     const from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     const to = now.toISOString();
     const data = await request<any>(`/api/analytics/kpi?from=${from}&to=${to}`);
+    // API 반환: { resolution: {rate}, routing: {rate}, processing: {avg, unit} }
     return {
-      resolutionRate: data.aiResolutionRate?.value || data.resolutionRate || 0,
-      routingAccuracy: data.routingAccuracy?.value || data.routingAccuracy || 0,
-      avgProcessingTimeHours: data.avgProcessingTime?.value || data.avgProcessingTimeHours || 0,
+      resolutionRate: data.resolution?.rate || 0,
+      routingAccuracy: data.routing?.rate || 0,
+      avgProcessingTimeHours: data.processing?.unit === "minutes"
+        ? (data.processing?.avg || 0) / 60
+        : (data.processing?.avg || 0),
     };
   } catch {
     return { resolutionRate: 0, routingAccuracy: 0, avgProcessingTimeHours: 0 };

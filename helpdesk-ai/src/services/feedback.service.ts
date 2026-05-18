@@ -5,10 +5,11 @@ import type { Feedback } from '@prisma/client';
 export class FeedbackService {
   /**
    * 피드백 제출 (👍/👎)
+   * 피드백 제출 시 해당 티켓을 closed 상태로 변경
    */
   async submitFeedback(input: SubmitFeedbackInput): Promise<Feedback> {
     // 중복 피드백 방지 (upsert)
-    return prisma.feedback.upsert({
+    const feedback = await prisma.feedback.upsert({
       where: {
         messageId_userId: {
           messageId: input.messageId,
@@ -22,6 +23,24 @@ export class FeedbackService {
         rating: input.rating,
       },
     });
+
+    // 피드백 대상 메시지의 티켓을 closed로 변경
+    const message = await prisma.message.findUnique({
+      where: { id: input.messageId },
+      select: { ticketId: true },
+    });
+
+    if (message?.ticketId) {
+      await prisma.ticket.update({
+        where: {
+          id: message.ticketId,
+          status: { in: ['resolved', 'open', 'in_progress'] }, // 이미 closed면 변경 안 함
+        },
+        data: { status: 'closed' },
+      }).catch(() => {}); // 이미 closed인 경우 무시
+    }
+
+    return feedback;
   }
 
   /**
