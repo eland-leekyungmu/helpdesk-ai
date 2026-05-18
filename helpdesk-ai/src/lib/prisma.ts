@@ -13,7 +13,7 @@ function createPrismaClient() {
     database: process.env.DB_NAME || "helpdesk",
     user: process.env.DB_USER || "helpdesk_admin",
     password: process.env.DB_PASSWORD || "",
-    ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
+    ssl: { rejectUnauthorized: false },
   });
   const adapter = new PrismaPg(pool);
 

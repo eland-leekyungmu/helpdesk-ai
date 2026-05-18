@@ -123,7 +123,13 @@ export default function LoginPage() {
                   <button
                     key={acc.email}
                     type="button"
-                    onClick={() => setEmail(acc.email)}
+                    onClick={() => {
+                      setEmail(acc.email);
+                      setTimeout(() => {
+                        const input = document.querySelector('input[type="email"]') as HTMLInputElement;
+                        if (input) input.focus();
+                      }, 50);
+                    }}
                     className="w-full flex items-center justify-between px-3 py-1.5 rounded-xl hover:bg-indigo-50 transition-colors group"
                   >
                     <code className="text-xs text-gray-600 group-hover:text-indigo-600">{acc.email}</code>

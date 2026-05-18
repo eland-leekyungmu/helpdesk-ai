@@ -171,7 +171,6 @@ export async function getTicketStats(): Promise<TicketStats> {
     const from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     const to = now.toISOString();
     const data = await request<any>(`/api/analytics/tickets?from=${from}&to=${to}`);
-<<<<<<< HEAD
     // API 응답: { total, byStatus: { open, in_progress, resolved, closed }, byResolutionType }
     const byStatus = data.byStatus || {};
     return {
@@ -227,18 +226,26 @@ export async function getLlmCostStats(period: "day" | "week" | "month" = "month"
         break;
     }
 
-    const groupBy = period === "day" ? "day" : period === "week" ? "day" : "day";
-    const data = await request<any>(
-      `/api/analytics/llm-cost?from=${from.toISOString()}&to=${now.toISOString()}&groupBy=${groupBy}`
+    // 모델별 집계
+    const modelData = await request<any>(
+      `/api/analytics/llm-cost?from=${from.toISOString()}&to=${now.toISOString()}&groupBy=model`
     );
+    // 일별 집계 (비용 추이)
+    const dayData = await request<any>(
+      `/api/analytics/llm-cost?from=${from.toISOString()}&to=${now.toISOString()}&groupBy=day`
+    );
+
     return {
-      totalCost: data.totalCostUsd || data.totalCost || 0,
-      byModel: (data.byModel || []).map((m: any) => ({
-        model: m.modelName || m.model || "",
-        cost: m.costUsd || m.cost || 0,
-        calls: m.requests || m.calls || 0,
+      totalCost: modelData.totalCost || 0,
+      byModel: (modelData.breakdown || []).map((m: any) => ({
+        model: m.label || "",
+        cost: m.cost || 0,
+        calls: m.count || 0,
       })),
-      byPeriod: data.byPeriod || [],
+      byPeriod: (dayData.breakdown || []).map((d: any) => ({
+        date: d.label || "",
+        cost: d.cost || 0,
+      })),
     };
   } catch {
     return { totalCost: 0, byModel: [], byPeriod: [] };
