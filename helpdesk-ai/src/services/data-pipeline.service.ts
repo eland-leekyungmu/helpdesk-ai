@@ -27,7 +27,7 @@ export async function generateSeedData(
   const allEntries: SyntheticEntry[] = [];
 
   for (const category of CATEGORIES) {
-    if (category === '기타') continue; // 기타는 시드 생성 제외
+    if ((category as string) === '기타') continue; // 기타는 시드 생성 제외
 
     const mapping = CATEGORY_TEAM_MAP[category];
     if (!mapping || !mapping.department) continue;

@@ -135,7 +135,7 @@ export default function StatisticsPage() {
                     <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} />
                     <Tooltip
                       contentStyle={{ borderRadius: "12px", border: "1px solid #e5e7eb", fontSize: "12px" }}
-                      formatter={(v: number) => [`$${v.toFixed(4)}`, "비용"]}
+                      formatter={(v: unknown) => [`$${Number(v).toFixed(4)}`, "비용"]}
                     />
                     <Bar dataKey="cost" radius={[6, 6, 0, 0]}>
                       {llmStats.byPeriod.map((_, i) => (

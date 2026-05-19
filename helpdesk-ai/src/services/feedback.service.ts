@@ -1,6 +1,12 @@
 import { prisma } from '@/lib/prisma';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { BedrockAgentClient, ListDataSourcesCommand, StartIngestionJobCommand } from '@aws-sdk/client-bedrock-agent';
 import type { SubmitFeedbackInput, ReindexStatus } from '@/shared/types';
 import type { Feedback } from '@prisma/client';
+
+const S3_BUCKET = process.env.KB_S3_BUCKET || 'helpdesk-ai-kb-docs-dev';
+const KB_ID = process.env.BEDROCK_KB_ID || 'FNZWM9CGC2';
+const REGION = process.env.AWS_REGION || 'ap-northeast-2';
 
 export class FeedbackService {
   /**
@@ -95,24 +101,91 @@ export class FeedbackService {
 
   /**
    * KB 재색인 트리거
+   * 1. DB의 미색인 엔트리를 S3에 업로드
+   * 2. Bedrock KB Ingestion Job 시작
    */
   async triggerReindex(): Promise<ReindexStatus> {
-    // 아직 색인되지 않은 엔트리 수 확인
-    const unindexed = await prisma.knowledgeBaseEntry.count({
+    // 아직 색인되지 않은 엔트리 조회
+    const unindexedEntries = await prisma.knowledgeBaseEntry.findMany({
       where: { indexedAt: null },
     });
 
-    if (unindexed === 0) {
-      return { status: 'already_running', entriesQueued: 0 };
+    if (unindexedEntries.length === 0) {
+      return { status: 'no_new_entries', entriesQueued: 0 };
     }
 
-    // 색인 시간 업데이트 (실제로는 Bedrock KB sync API 호출)
+    const s3 = new S3Client({ region: REGION });
+    let uploaded = 0;
+
+    // 1. 각 엔트리를 S3에 텍스트 파일로 업로드
+    for (const entry of unindexedEntries) {
+      const docContent = [
+        `[질문]\n${entry.question}`,
+        `[답변]\n${entry.answer}`,
+      ].join('\n\n');
+
+      const metadata = {
+        metadataAttributes: {
+          category: entry.category,
+          source_type: entry.sourceType,
+          is_synthetic: String(entry.isSynthetic),
+        },
+      };
+
+      const key = `tickets/kb-entry-${entry.id}.txt`;
+      const metaKey = `tickets/kb-entry-${entry.id}.txt.metadata.json`;
+
+      try {
+        await s3.send(new PutObjectCommand({
+          Bucket: S3_BUCKET,
+          Key: key,
+          Body: docContent,
+          ContentType: 'text/plain; charset=utf-8',
+        }));
+        await s3.send(new PutObjectCommand({
+          Bucket: S3_BUCKET,
+          Key: metaKey,
+          Body: JSON.stringify(metadata),
+          ContentType: 'application/json',
+        }));
+        uploaded++;
+      } catch (e) {
+        console.error(`S3 업로드 실패 (${entry.id}):`, e);
+      }
+    }
+
+    // 2. Bedrock KB Ingestion Job 시작
+    let ingestionJobId: string | undefined;
+    try {
+      const bedrockAgent = new BedrockAgentClient({ region: REGION });
+      const listResp = await bedrockAgent.send(new ListDataSourcesCommand({ knowledgeBaseId: KB_ID }));
+      const dataSources = listResp.dataSourceSummaries || [];
+
+      if (dataSources.length > 0) {
+        const dsId = dataSources[0].dataSourceId!;
+        const syncResp = await bedrockAgent.send(new StartIngestionJobCommand({
+          knowledgeBaseId: KB_ID,
+          dataSourceId: dsId,
+        }));
+        ingestionJobId = syncResp.ingestionJob?.ingestionJobId;
+      }
+    } catch (e) {
+      console.error('Bedrock Ingestion 실패:', e);
+    }
+
+    // 3. DB에 색인 시간 업데이트
     await prisma.knowledgeBaseEntry.updateMany({
-      where: { indexedAt: null },
+      where: { id: { in: unindexedEntries.map(e => e.id) } },
       data: { indexedAt: new Date() },
     });
 
-    return { status: 'triggered', entriesQueued: unindexed };
+    return {
+      status: 'triggered',
+      entriesQueued: uploaded,
+      message: ingestionJobId
+        ? `Ingestion Job 시작됨 (${ingestionJobId}). 완료까지 1~2분 소요됩니다.`
+        : `S3 업로드 완료 (${uploaded}건). Bedrock Ingestion은 수동으로 확인하세요.`,
+    };
   }
 
   /**
