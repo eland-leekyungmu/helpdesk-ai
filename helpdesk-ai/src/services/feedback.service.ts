@@ -34,10 +34,15 @@ export class FeedbackService {
       await prisma.ticket.update({
         where: {
           id: message.ticketId,
-          status: { in: ['resolved', 'open', 'in_progress'] }, // 이미 closed면 변경 안 함
+          status: { in: ['resolved', 'open', 'in_progress'] },
         },
         data: { status: 'closed' },
-      }).catch(() => {}); // 이미 closed인 경우 무시
+      }).catch(() => {});
+
+      // 👍 긍정 피드백인 경우에만 KB 엔트리 적재
+      if (input.rating === 'positive') {
+        await this.accumulateLearningData(message.ticketId);
+      }
     }
 
     return feedback;
