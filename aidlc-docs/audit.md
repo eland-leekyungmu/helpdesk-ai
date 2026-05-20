@@ -180,3 +180,200 @@
 **Context**: INCEPTION Phase - Units Generation 완료. 사용자 승인 대기.
 
 ---
+
+## Code Generation - Unit 2: Intake & Routing - Plan Created
+**Timestamp**: 2026-05-14T00:00:00Z
+**User Input**: "이제 unit 2를 구현할거야. API 스펙은 helpdesk-ai\docs\api-spec.md 를 따라줘."
+**AI Response**: Unit 2 코드 생성 계획 작성 완료. 12개 Step, 14개 스토리 커버.
+**Context**: CONSTRUCTION Phase - Code Generation (Unit 2: Intake & Routing) Part 1 Planning
+
+---
+
+## Code Generation - Unit 2: Intake & Routing - Complete
+**Timestamp**: 2026-05-14T00:01:00Z
+**AI Response**: Unit 2 코드 생성 완료. 총 22개 파일 생성 (타입 5, 유틸 3, 미들웨어 1, 리포지토리 5, 서비스 4, API Routes 9). TypeScript 진단 통과.
+**Context**: CONSTRUCTION Phase - Code Generation (Unit 2: Intake & Routing) Part 2 Generation 완료
+
+---
+
+---
+
+## [소급 기록] 세션 재개 및 상태 확인
+**Timestamp**: 2026-05-15T00:00:00Z
+**User Input**: "AIDLC 방식으로 작업 중인데 확인하고 현재 어떤 작업을 직전에 마쳤는지 브리핑하고 대기해줘"
+**AI Response**: aidlc-state.md, audit.md, git log 확인. Unit 1~5 모두 완료 및 main 머지 확인. aidlc-state.md 업데이트 (모든 Unit 완료 처리). 현재 단계: CONSTRUCTION - Build and Test.
+**Context**: 세션 재개 - 이전 세션 마지막 작업: fix: 티켓 완료 처리 로직 추가 + DB 연결 안정화 (commit aeee7ee)
+
+---
+
+## [소급 기록] 환경 문제 수정 - next.config.ts & .env
+**Timestamp**: 2026-05-15T00:10:00Z
+**User Input**: "일단 사이트 실행해줘봐" / "컴파일링이라고 뜨고 계속 멈춰있고..."
+**AI Response**: 두 가지 문제 수정:
+1. .env 파일의 `걸려....="0.5"` → `CONFIDENCE_THRESHOLD="0.5"` 수정 (환경변수 파싱 오류)
+2. next.config.ts에 serverExternalPackages 추가 (AWS SDK, Prisma 등 무거운 패키지를 Turbopack 번들링에서 제외 → 컴파일 무한 루프 해결)
+**Context**: 환경 설정 버그 수정 - AIDLC 외 긴급 수정
+
+---
+
+## [소급 기록] Bug Fix #1 - 1차 처리자 응답 시 티켓 미완료 처리
+**Timestamp**: 2026-05-15T01:00:00Z
+**User Input**: "티켓 번호 TK-2026-1245의 요청이 현재 1차처리자의 답변으로 처리를 했는데 왜 완료처리가 안될까? 이 부분 수정이 되었는지 검토해주고 수정이 되었다면 이 티켓은 완료로 처리해줘"
+**AI Response**: 
+- 원인: message.service.ts에서 agent_l1 public 응답 시 resolved 처리 로직 누락
+- 수정: agent_l1이 public 메시지 작성 시 ticketRepository.updateStatus("resolved") 호출 추가
+- TK-2026-1245 수동 resolved 처리 완료 (scripts/resolve-ticket.ts 사용)
+**Context**: POST Build-and-Test 버그 수정 사이클 #1 (Minimal depth) - message.service.ts
+
+---
+
+## [소급 기록] Bug Fix #2 - 분배 시 이관 메시지 미표시
+**Timestamp**: 2026-05-15T02:00:00Z
+**User Input**: "1차 처리자가 전달할 때 작성한 메세지가 보이지 않는데... 이게 표시가 되어야 하는데 확인해보고 의견을 부탁해" / "네"
+**AI Response**:
+- 원인: 분배 시 comment가 ticket_assignments 테이블에만 저장되고 messages 테이블에는 저장되지 않아 메시지 이력에 미표시
+- 수정 방법 B 채택: 분배 시 comment를 private 메시지로도 저장
+- ticket.service.ts assignTicket(): comment가 있으면 agent_l1 private 메시지로 messageRepository.create() 추가
+- ticket.service.ts getTicketById(): 기존 분배 건 호환을 위해 assignment.comment를 메시지 목록에 합쳐서 반환 (중복 방지 로직 포함, 시간순 정렬)
+- ticket.repository.ts findById(): assignments에 assigner include 추가
+- Prisma client 재생성 (npx prisma generate)
+**Context**: POST Build-and-Test 버그 수정 사이클 #2 (Minimal depth) - ticket.service.ts, ticket.repository.ts
+
+---
+
+## AIDLC 방법론 재확인 및 향후 운영 방침 결정
+**Timestamp**: 2026-05-15T03:00:00Z
+**User Input**: "AI DLC 방법론을 따라야해 혹시 Build And Test 단계 후 사람이 테스트 중 발생한 버그 수정 등에 대해서도 aidlc 방법론으로 진행해야하는게 맞나?" / "응"
+**AI Response**: AIDLC 룰 파일 확인. Operations 단계는 placeholder 상태. Adaptive Workflow 원칙에 따라 Build and Test 이후 버그/개선은 미니 사이클로 AIDLC 적용하기로 결정. 소급 audit 기록 완료.
+**향후 운영 방침**:
+- 단순 버그 수정: Requirements Analysis(Minimal) → Code Generation
+- 기능 개선/변경: Requirements Analysis(Standard) → Code Generation  
+- 새 기능 추가: 전체 INCEPTION + CONSTRUCTION
+**Context**: 방법론 재확인 및 운영 방침 확정
+
+---
+
+---
+
+## UI 개선 — Requirements Analysis
+**Timestamp**: 2026-05-15T04:00:00Z
+**User Input**: "ui를 전반적으로 좀 개선하고 싶어 톤앤매너는 내가 전달한 이 이미지를 참고하고 ui/ux는 니가 아는한 가장 최신 2026 it 트렌드에 맞춰봐"
+**AI Response**: 질문 파일 2개 생성 (ui-improvement-requirements-questions.md, ui-improvement-ux-questions.md). 답변 수집 후 요구사항 문서 작성.
+**Context**: POST Build-and-Test 미니 사이클 — Requirements Analysis (Standard depth)
+
+---
+
+## UI 개선 — Code Generation 승인
+**Timestamp**: 2026-05-15T05:00:00Z
+**User Input**: "승인할게"
+**AI Response**: Code Generation 계획(ui-improvement-code-generation-plan.md) 승인. 9단계 실행 시작.
+**Context**: POST Build-and-Test 미니 사이클 — Code Generation Part 2 실행
+
+---
+
+## UI 개선 — Code Generation 완료
+**Timestamp**: 2026-05-15T06:00:00Z
+**AI Response**: UI 개선 코드 생성 완료. 총 30개 파일 생성/수정.
+**변경 내용**:
+- 패키지: lucide-react, recharts 설치
+- globals.css: 디자인 토큰, 애니메이션 추가
+- UI 컴포넌트: Button/Input/Textarea/Card/Badge 개선 + Toast/Modal/EmptyState/Skeleton/ProgressBar 신규
+- 레이아웃: 접이식 사이드바(인디고 그라디언트), 역할별 테마, 반응형 모바일 드로어
+- 로그인: 좌우 분할 레이아웃, 브랜드 패널
+- 임직원: AI 단계별 로딩, 채팅 버블, 하단 고정 입력창, EmptyState
+- 처리자: 하단 고정 입력창, Modal 컴포넌트 적용, 토스트 알림
+- 관리자: Recharts 차트(도넛+에어리어+바), KPI 카드, 수동 새로고침
+- alert() 전면 Toast로 교체
+**TypeScript 진단**: 전체 통과
+**Context**: POST Build-and-Test 미니 사이클 — Code Generation 완료
+
+---
+
+---
+
+## 결함 수정 사이클 A — Requirements Analysis
+**Timestamp**: 2026-05-15T07:00:00Z
+**User Input**: "결함 목록 12개 전달, 사이클 A/B/C 방향으로 진행 승인"
+**AI Response**: 결함 분석 완료. bugfix-cycle-a-requirements.md, bugfix-cycle-a-code-plan.md 생성.
+**Context**: POST Build-and-Test 미니 사이클 — 버그 수정 사이클 A
+
+---
+
+## 결함 수정 사이클 A — Code Generation 완료
+**Timestamp**: 2026-05-15T08:00:00Z
+**AI Response**: 사이클 A 코드 생성 완료. 총 11개 파일 수정/생성.
+**수정 내용**:
+- BUG-01: 처리자 티켓 상세 — resolved/closed 시 답변창 숨김
+- BUG-02/03: 대시보드 트렌드 차트 실제 API 연동 (getDailyTrend 추가), 레이아웃 사용자명 하드코딩 제거
+- BUG-04: StatusBadge에 tooltip 추가 (resolved vs closed 차이 설명)
+- BUG-06: alert() 잔존 없음 확인 (이미 완료)
+- BUG-07: assignTicket prisma.$transaction() 적용 (동시 배정 방지)
+- BUG-09: 담당자 null + open 상태 시 "1차 처리자 큐" 표시
+- BUG-10: 사용자 관리 편집 모달 구현 + PATCH API 연동
+- BUG-12: agent/admin layout 사용자명 로딩 전 skeleton 표시 (email prefix 제거)
+**TypeScript 진단**: 전체 통과
+**Context**: POST Build-and-Test 미니 사이클 — 버그 수정 사이클 A 완료
+
+---
+
+---
+
+## 결함 수정 사이클 B — Code Generation 완료
+**Timestamp**: 2026-05-15T09:00:00Z
+**User Input**: "네 진행해 / 1차처리자가 할 수 있어야 해"
+**AI Response**: 사이클 B 코드 생성 완료.
+**수정 내용**:
+- BUG-05: getLlmCostStats에 period 파라미터 추가 (day=24h, week=7일, month=이번달), 통계 페이지에서 period 전달, 레이블에 기간 설명 추가
+- BUG-11: 1차 처리자 사이드바에 "전체 티켓" 메뉴 추가, (agent)/all-tickets/page.tsx 신규 생성, /api/admin/tickets에 agent_l1 권한 추가
+- 역할 차별점 확정: 1차 처리자=티켓 처리 실무, 관리자=시스템 운영 관리
+**TypeScript 진단**: 전체 통과
+**Context**: POST Build-and-Test 미니 사이클 — 버그 수정 사이클 B 완료
+
+---
+
+---
+
+## 결함 수정 사이클 C — Requirements Analysis
+**Timestamp**: 2026-05-15T10:00:00Z
+**User Input**: "오키 진행해 / 채웠어"
+**AI Response**: bugfix-cycle-c-questions.md 생성 및 답변 수집. 요구사항 확정.
+**결정사항**: 업로드=티켓+메시지 모두, 다운로드=Presigned URL, 권한=티켓 접근 권한 동일, 제한=파일당 200MB/최대 10개, 버킷=전용 신규 버킷
+**Context**: POST Build-and-Test 미니 사이클 — 첨부파일 기능 사이클 C
+
+---
+
+## 결함 수정 사이클 C — Code Generation 완료
+**Timestamp**: 2026-05-15T11:00:00Z
+**AI Response**: 사이클 C 코드 생성 완료. 총 12개 파일 생성/수정.
+**수정 내용**:
+- .env: ATTACHMENT_BUCKET, ATTACHMENT_MAX_SIZE_MB, ATTACHMENT_MAX_COUNT, ATTACHMENT_PRESIGNED_EXPIRES_SEC 추가
+- src/lib/s3.ts: S3 presigned URL 유틸리티 (업로드/다운로드/삭제)
+- src/app/api/attachments/upload/route.ts: Presigned PUT URL 발급 API
+- src/app/api/attachments/download/route.ts: Presigned GET URL 발급 API
+- src/lib/api.ts: getUploadUrls, uploadFileToS3, getDownloadUrl, createTicket/addMessage 파라미터 추가
+- src/components/ui/FileUpload.tsx: 파일 선택/미리보기/제거 컴포넌트
+- src/components/ui/AttachmentList.tsx: 첨부파일 목록/다운로드 컴포넌트
+- src/shared/types/message.ts: AddMessageRequest에 attachments 추가
+- src/services/message.service.ts: attachments 저장 연동
+- (employee)/new-ticket/page.tsx: 파일 업로드 UI 연동
+- (employee)/my-tickets/[id]/page.tsx: 첨부파일 표시
+- (agent)/tickets/[id]/page.tsx: 첨부파일 업로드 + 표시
+- @aws-sdk/s3-request-presigner 패키지 설치
+**TypeScript 진단**: 전체 통과
+**Context**: POST Build-and-Test 미니 사이클 — 첨부파일 기능 사이클 C 완료
+
+---
+
+---
+
+## 본인 아님 처리 / 재분배 결함 수정
+**Timestamp**: 2026-05-15T12:00:00Z
+**User Input**: "agent_l2 본인 아님 처리 시 403 오류, 담당자 목록 표시, AI 재분배 시 같은 사람 배정 방지"
+**AI Response**: 4개 결함 수정 완료.
+- BUG-1: /api/admin/agents withRole에 agent_l2 추가
+- BUG-2: reject API에서 ticketId로 active assignment 자동 조회 (IMP-1 포함)
+- BUG-3: rejectAssignment에서 AI 재분배 시 previousAssignees 필터 적용, findAgentByTeamExcluding 추가
+- BUG-4: 본인 아님 모달에서 본인(userId) 제외, 재분배 결과 토스트 표시
+**Context**: POST Build-and-Test 미니 사이클 — 버그 수정
+
+---

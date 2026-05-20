@@ -3,11 +3,12 @@
 import { Sidebar } from "@/components/layout";
 
 export default function EmployeeLayout({ children }: { children: React.ReactNode }) {
-  // TODO: 실제 사용자 정보는 세션에서 가져옴
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-[#f8f9fc]">
       <Sidebar role="employee" userName="김사원" />
-      <main className="flex-1 bg-gray-50 p-8">{children}</main>
+      <main className="flex-1 p-6 md:p-8 pt-16 md:pt-8 overflow-auto">
+        <div className="max-w-4xl mx-auto">{children}</div>
+      </main>
     </div>
   );
 }

@@ -1,23 +1,29 @@
-// Shared types - Prisma 스키마 기반 프론트엔드 타입 정의
+// 공통 Enum/타입 정의 (Prisma enum과 동기화)
 
 export type UserRole = "employee" | "agent_l1" | "agent_l2" | "admin";
 export type TicketStatus = "open" | "in_progress" | "resolved" | "closed";
-export type TicketPriority = "low" | "medium" | "high";
 export type MessageVisibility = "public" | "private";
 export type SenderType = "user" | "agent_l1" | "agent_l2" | "ai" | "system";
-export type MessageSource = "web" | "email" | "ai_generated";
+export type CreatedVia = "web" | "email";
 export type AssignmentType = "ai_auto" | "manual" | "reassign";
 export type AssignmentStatus = "active" | "rejected" | "completed";
+export type Priority = "low" | "medium" | "high";
+export type ContentType = "text" | "html";
+export type MessageSource = "web" | "email" | "ai_generated";
+export type ResolutionType = "ai_auto" | "agent_l1" | "agent_l2";
 export type FeedbackRating = "positive" | "negative";
 
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: UserRole;
-  teamId: string;
-  team?: Team;
+export interface Attachment {
+  filename: string;
+  fileSize: number;
+  mimeType: string;
+  size: number;
+  url: string;
 }
+
+
+// Frontend에서 사용하는 인터페이스 (Unit 1)
+export type TicketPriority = Priority; // alias for frontend compatibility
 
 export interface Organization {
   id: string;
@@ -41,18 +47,27 @@ export interface Team {
   department?: Department;
 }
 
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  teamId: string;
+  team?: Team;
+}
+
 export interface Ticket {
   id: string;
   ticketNumber: string;
   subject: string;
   status: TicketStatus;
-  priority: TicketPriority;
+  priority: Priority;
   category: string[] | null;
   requesterId: string;
   assignedTo: string | null;
-  createdVia: "web" | "email";
+  createdVia: CreatedVia;
   confidenceScore: number | null;
-  resolutionType: "ai_auto" | "agent_l1" | "agent_l2" | null;
+  resolutionType: ResolutionType | null;
   createdAt: string;
   updatedAt: string;
   resolvedAt: string | null;
@@ -67,7 +82,7 @@ export interface Message {
   senderType: SenderType;
   visibility: MessageVisibility;
   content: string;
-  contentType: "text" | "html";
+  contentType: ContentType;
   attachments: AttachmentMeta[] | null;
   source: MessageSource;
   createdAt: string;
@@ -104,7 +119,6 @@ export interface Feedback {
   createdAt: string;
 }
 
-// API Response types
 export interface PaginatedResult<T> {
   data: T[];
   total: number;
@@ -113,19 +127,19 @@ export interface PaginatedResult<T> {
   totalPages: number;
 }
 
-export interface ApiResponse<T> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
 }
 
-// Dashboard stats
 export interface TicketStats {
-  total: number;
-  open: number;
-  inProgress: number;
-  resolved: number;
-  closed: number;
+  total?: number;
+  open?: number;
+  inProgress?: number;
+  resolved?: number;
+  closed?: number;
+  [key: string]: unknown;
 }
 
 export interface KpiStats {
@@ -139,3 +153,7 @@ export interface LlmCostStats {
   byModel: { model: string; cost: number; calls: number }[];
   byPeriod: { date: string; cost: number }[];
 }
+
+
+// Re-export auth types for Unit 4 compatibility
+export type { AuthResult, TokenPayload, LoginRequest, CreateUserRequest, CreateUserInput, UpdateUserRequest, UpdateUserInput, SettingsUpdate, CreateDepartmentInput, CreateTeamInput, CreateOrganizationInput, SubmitFeedbackInput, UpdateOrganizationInput, UpdateDepartmentInput, UpdateTeamInput, AgentFilters, DateRange, RateMetric, CostStats, DepartmentStats, ReindexStatus } from "./auth";
