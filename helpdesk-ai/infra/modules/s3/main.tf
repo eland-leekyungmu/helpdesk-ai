@@ -12,6 +12,10 @@ locals {
       purpose   = "CodeBuild S3 cache"
       lifecycle = false
     }
+    attachments = {
+      purpose   = "File attachments storage"
+      lifecycle = false
+    }
   }
 }
 
