@@ -14,6 +14,7 @@ AI 기반 IT Help Desk 자동 응답 및 티켓 분배 시스템입니다.
 | **개발 도구** | Kiro IDE + Claude (AI 코딩 에이전트) |
 | **개발 기간** | 2026.05.19 ~ 2026.05.20 |
 | **대상 사용자** | 임직원 5,000명 규모 |
+| **서비스 URL** | https://ai-dlc.innoplecloud.net |
 
 ---
 
