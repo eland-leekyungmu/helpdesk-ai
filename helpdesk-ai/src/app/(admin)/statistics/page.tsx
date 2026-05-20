@@ -9,6 +9,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell, PieChart, Pie,
 } from "recharts";
+import type { PieLabelRenderProps } from "recharts";
 import { DollarSign, Cpu, TrendingUp, Building2, ChevronDown, ChevronRight } from "lucide-react";
 
 const PERIOD_LABELS = {
@@ -199,7 +200,7 @@ export default function StatisticsPage() {
                           outerRadius={90}
                           paddingAngle={2}
                           dataKey="value"
-                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          label={(props: PieLabelRenderProps) => `${props.name ?? ''} ${(((props.percent as number) ?? 0) * 100).toFixed(0)}%`}
                           labelLine={false}
                         >
                           {orgStats.organizations.filter((o) => o.ticketCount > 0).map((_, i) => (
