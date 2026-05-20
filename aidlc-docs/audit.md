@@ -453,3 +453,33 @@
 **Context**: 충돌 파일: layout.tsx, settings/page.tsx, statistics/page.tsx, admin/settings/route.ts, analytics/route.ts, Sidebar.tsx, Input.tsx, Modal.tsx, api.ts, ai.service.ts, analytics.service.ts
 
 ---
+
+
+## ECS 배포 설정 수정 및 운영 환경 안정화
+**Timestamp**: 2026-05-20T06:00:00Z
+**User Input**: "현재 main 브랜치 기준으로 인프라에 실제 배포 해줘" / "docker desktop 실행 했어" / "env가 바뀌었어 다시 새로운 env 기준으로 다시 배포" / "컨테이너는 올라온거같은데 상태검사 통과를 못하고 503으로 중지되고있어" / "배포된 서버에서 db쪽 연결이 잘 안되고있는거같은데 원인 파악좀" / "main 브랜치 pull 받아서 현재 변경사항이랑 합쳐서 다시 배포해줘"
+**AI Response**: ECS 배포 과정에서 발견된 5개 문제 순차 해결 후 최종 배포 완료.
+**Context**: POST Build-and-Test 운영 배포 — 인프라 설정 수정 (AIDLC 미니 사이클 불필요)
+
+### 해결한 문제:
+| # | 문제 | 원인 | 수정 |
+|---|---|---|---|
+| 1 | Docker 빌드 TypeScript 에러 | `statistics/page.tsx` PieChart label prop 타입 불일치 | `PieLabelRenderProps` import + 타입 적용 |
+| 2 | Docker 빌드 standalone 미생성 | `next.config.ts`에 `output: "standalone"` 누락 | 설정 추가 |
+| 3 | ECS 태스크 시작 실패 (Log Group) | `/ecs/helpdesk-ai-dev` CloudWatch Log Group 미존재 | `aws logs create-log-group` 실행 |
+| 4 | ECS 태스크 시작 실패 (Secrets Manager) | Private subnet에서 Secrets Manager 접근 불가 (VPC Endpoint 없음) | 4개 VPC Endpoint 생성 (secretsmanager, logs, ecr.api, ecr.dkr) + SG 443 인바운드 추가 |
+| 5 | ECR immutable tag 정책 | `latest` 태그 덮어쓰기 불가 | timestamp 기반 태그 사용 (`deploy-YYYYMMDD-HHmmss`) |
+| 6 | Secrets Manager JSON 파싱 에러 | PowerShell에서 JSON 따옴표가 벗겨져 `{url:...}` (invalid JSON)으로 저장됨 | `file://` 프로토콜로 올바른 JSON 저장 |
+| 7 | Health check 실패 (503) | `/api/health` 엔드포인트 미존재 | `src/app/api/health/route.ts` 생성 |
+| 8 | DB 연결 실패 | ECS 태스크 정의에 `DB_HOST`, `DB_USER`, `DB_PASSWORD` 환경변수 누락 → 코드 fallback이 구 서울 리전 RDS로 연결 시도 | 태스크 정의에 DB 개별 환경변수 추가 |
+
+### 최종 배포 상태:
+- **이미지 태그**: `deploy-20260520-152302`
+- **태스크 정의**: `helpdesk-ai-dev:5`
+- **ECS 클러스터/서비스**: `helpdesk-ai-ecs-cluster-dev` / `helpdesk-ai-ecs-service-dev`
+- **VPC Endpoints 추가**: secretsmanager, logs, ecr.api, ecr.dkr (vpc-0357504eb7c88d73b)
+- **KB 데이터 업로드**: km-generated-1000.json → 1000건 개별 txt+metadata로 분리 업로드 (ticket-01001 ~ ticket-02000)
+- **KB Ingestion Job**: WHSD3ZJFUV (트리거 완료)
+- **Git 커밋**: `3e10e08` (main push 완료)
+
+---
