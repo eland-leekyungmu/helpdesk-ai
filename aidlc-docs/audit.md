@@ -377,3 +377,79 @@
 **Context**: POST Build-and-Test 미니 사이클 — 버그 수정
 
 ---
+
+---
+
+## 인프라 환경 마이그레이션 (ap-northeast-2 → us-east-1)
+**Timestamp**: 2026-05-20T04:00:00Z
+**User Input**: "잠시만 우리가 테스트를 하기전에 새로운 환경에 인프라를 모두 구성해야해 테라폼으로 구성해둔 것이 있으니 진행해줘 aws configure를 이용해서 새로운 환경에 접근 가능한 계정을 업데이트했어"
+**AI Response**: 인프라 프로비저닝 실행. 리전 변경(ap-northeast-2 → us-east-1) 필요 확인 후 전체 Terraform 코드 수정 및 apply 완료.
+**Context**: CONSTRUCTION - Build and Test 단계. 새 AWS 계정(473897133932)에 인프라 구성.
+
+### 수행 작업:
+1. **Terraform 코드 리전 변경**: 모든 모듈의 ap-northeast-2 → us-east-1 변경
+   - bootstrap/variables.tf, environments/dev/backend.tf, variables.tf
+   - modules: vpc, ecs, iam, s3, ses-inbound, bedrock-kb (AZ, endpoint, ARN, ELB account ID 등)
+2. **Bootstrap 실행**: S3 tfstate 버킷 + DynamoDB lock 테이블 생성 (us-east-1)
+   - 버킷명 충돌로 `-use1` 접미사 추가 (`helpdesk-ai-tfstate-dev-use1`)
+3. **Dev 환경 프로비저닝**: 110개 리소스 생성
+   - S3 버킷명 글로벌 충돌 → `-use1` 접미사 추가
+   - ACM 인증서 DNS 검증 대기 → validation 리소스 분리 (수동 검증 후 재적용)
+   - SES domain verification → 코드에서 제거 (DNS 전파 후 수동 확인)
+   - OpenSearch 인덱스 수동 생성 (Node.js 스크립트로 벡터 인덱스 생성)
+   - ACM 검증 완료 후 HTTPS 리스너 + ECS Service 생성 완료
+4. **S3 Attachments 버킷 추가**: `helpdesk-ai-attachments-dev-use1` 생성 + Terraform 모듈 추가
+
+### 생성된 리소스 요약:
+| 리소스 | 값 |
+|--------|-----|
+| VPC | vpc-0357504eb7c88d73b (10.0.0.0/16) |
+| RDS | helpdesk-ai-rds-dev.cvvo4p23siq1.us-east-1.rds.amazonaws.com:5432 |
+| ALB | helpdesk-ai-alb-dev-2064395512.us-east-1.elb.amazonaws.com |
+| ECR | 473897133932.dkr.ecr.us-east-1.amazonaws.com/helpdesk-ai |
+| Bedrock KB | JZNVB0DIRP |
+| OpenSearch | https://c2keyptxj6y8id5sw6ki.us-east-1.aoss.amazonaws.com |
+| App URL | https://ai-dlc.innoplecloud.net |
+| S3 버킷 | tfstate-dev-use1, alb-logs-dev-use1, codepipeline-dev-use1, codebuild-cache-dev-use1, emails-dev-use1, kb-docs-dev-use1, attachments-dev-use1 |
+
+---
+
+## DB 데이터 마이그레이션
+**Timestamp**: 2026-05-20T04:30:00Z
+**User Input**: "기존 DB에 있는 데이터 베이스 마이그레이션이 ... 이 정보를 이용해서 기존 db에 있는 데이터를 현재 .env에 있는 db로 마이그레이션 해줘"
+**AI Response**: Node.js 스크립트(migrate-data.mjs)로 기존 ap-northeast-2 RDS → 새 us-east-1 RDS 데이터 마이그레이션 완료.
+**Context**: 12개 테이블 전체 마이그레이션.
+
+### 마이그레이션 결과:
+| 테이블 | 건수 |
+|--------|------|
+| organizations | 8 |
+| departments | 16 |
+| teams | 31 |
+| users | 66 |
+| tickets | 13 |
+| messages | 27 |
+| ticket_assignments | 11 |
+| email_threads | 0 |
+| llm_usage_logs | 28 |
+| feedbacks | 2 |
+| knowledge_base_entries | 2 |
+| system_configs | 2 |
+
+---
+
+## .env 설정 및 로컬 테스트 환경 구성
+**Timestamp**: 2026-05-20T05:00:00Z
+**User Input**: ".env 파일 만들어줘봐 기존 .env 파일는 내가 만들었으니 확인해서 수정할 부분 수정해줘"
+**AI Response**: .env 파일을 새 환경에 맞게 업데이트. DATABASE_URL, DB_HOST, AWS_REGION, BEDROCK_KB_ID, KB_S3_BUCKET, JWT_SECRET, ATTACHMENT_BUCKET 등 변경.
+**Context**: 로컬 개발 환경에서 새 인프라 연동 확인.
+
+---
+
+## feat/unit1-frontend 머지
+**Timestamp**: 2026-05-20T03:30:00Z
+**User Input**: "unit1-frontend 쪽 브랜치에 가장 최근에 푸시된 사항을 main에 머지하고 충돌까지 해결해봐"
+**AI Response**: origin/feat/unit1-frontend를 main에 머지. 11개 파일 충돌 해결 (unit1-frontend 최신 코드 우선 적용).
+**Context**: 충돌 파일: layout.tsx, settings/page.tsx, statistics/page.tsx, admin/settings/route.ts, analytics/route.ts, Sidebar.tsx, Input.tsx, Modal.tsx, api.ts, ai.service.ts, analytics.service.ts
+
+---
