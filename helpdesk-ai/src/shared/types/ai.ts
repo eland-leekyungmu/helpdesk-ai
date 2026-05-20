@@ -39,6 +39,7 @@ export interface RAGSource {
   question: string;
   score: number;
   category: string;
+  team?: string;
 }
 
 /** AI 답변 응답 */

@@ -71,7 +71,7 @@ export const ticketService = {
     // 6. 라우팅 판정
     const routing = await aiService.determineRouting(
       aiResponse.confidence,
-      aiResponse.sources as unknown as Parameters<typeof aiService.determineRouting>[1],
+      aiResponse.sources,
       intentResult,
       aiResponse.answer,
     );
@@ -108,15 +108,21 @@ export const ticketService = {
     }
     // escalate_to_l1: 큐에 남김 (assignedTo = null, status = open)
 
+    // 최종 상태 반영
+    const finalAssignedTo = routing.type === "route_to_l2" ? routing.agentId : ticket.assignedTo;
+    const finalStatus = routing.type === "ai_answer" ? "resolved"
+      : routing.type === "route_to_l2" ? "in_progress"
+      : ticket.status;
+
     return {
       id: ticket.id,
       ticketNumber: ticket.ticketNumber,
       subject: ticket.subject,
-      status: ticket.status,
+      status: finalStatus,
       priority: ticket.priority,
       category: categories.length > 0 ? categories : null,
       requesterId: ticket.requesterId,
-      assignedTo: ticket.assignedTo,
+      assignedTo: finalAssignedTo,
       createdVia: ticket.createdVia,
       confidenceScore: aiResponse.confidence,
       createdAt: ticket.createdAt.toISOString(),

@@ -27,6 +27,7 @@ export const CATEGORIES = [
   '세무/행정',
   '홍보/마케팅 시스템',
   '계정/권한 관리',
+  '비IT 문의 (시설/총무/기타)',
 ] as const;
 
 export type Category = (typeof CATEGORIES)[number];
@@ -67,5 +68,6 @@ export const CATEGORY_TEAM_MAP: Record<string, { department: string; team: strin
   '세무/행정': { department: '재무부서', team: '세무행정팀' },
   '홍보/마케팅 시스템': { department: '홍보부서', team: '홍보마케팅팀' },
   '계정/권한 관리': { department: '', team: '' }, // 1차 처리자 판단
+  '비IT 문의 (시설/총무/기타)': { department: '', team: '' }, // 1차 처리자 판단
   '기타': { department: '', team: '' }, // 1차 처리자 큐 — 제거됨 (하위 호환용)
 };

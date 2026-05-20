@@ -88,12 +88,12 @@ export async function generateAnswer(
     durationMs: intentUsage.durationMs,
   });
 
-  // 2. 1차 처리 문서에서 KB 검색 (resolution_type = l1_resolved)
-  let ragResults = await searchKB(question, intentResult, 'l1_resolved');
+  // 2. KB 검색 (필터 없이 문의 자체로 유사도 검색)
+  let ragResults = await searchKB(question, undefined, undefined);
 
-  // 필터 결과 부족 시 fallback (필터 완화)
+  // 결과 부족 시에도 필터 없이 재검색 (이미 필터 없으므로 그대로)
   if (ragResults.length < RAG_FALLBACK_MIN_RESULTS) {
-    ragResults = await searchKB(question, undefined, 'l1_resolved');
+    ragResults = [];
   }
 
   // 3. 1차 신뢰도 산출
@@ -138,6 +138,7 @@ export async function generateAnswer(
       question: r.content.substring(0, 100),
       score: r.score,
       category: r.metadata.category,
+      team: r.metadata.team,
     }));
 
     return {
@@ -150,11 +151,11 @@ export async function generateAnswer(
     };
   }
 
-  // 5. 1차 신뢰도 < 50% → 2차 처리 문서에서 KB 검색 (resolution_type = l2_resolved)
-  let l2RagResults = await searchKB(question, intentResult, 'l2_resolved');
+  // 5. 1차 신뢰도 < 50% → 2차 처리 문서에서 KB 검색 (필터 없이 문의 자체로 검색)
+  let l2RagResults = await searchKB(question, undefined, undefined);
 
   if (l2RagResults.length < RAG_FALLBACK_MIN_RESULTS) {
-    l2RagResults = await searchKB(question, undefined, 'l2_resolved');
+    l2RagResults = [];
   }
 
   const l2Confidence = assessConfidence(l2RagResults);
@@ -164,6 +165,7 @@ export async function generateAnswer(
     question: r.content.substring(0, 100),
     score: r.score,
     category: r.metadata.category,
+    team: r.metadata.team,
   }));
 
   // 2차 처리자에게 바로 전달 (답변 생성 없음)
@@ -189,7 +191,7 @@ export function assessConfidence(ragResults: RAGResult[]): number {
 
 export async function determineRouting(
   confidence: number,
-  ragResults: RAGResult[],
+  ragResults: RAGSource[],
   intentResult: IntentResult,
   generatedAnswer: string,
 ): Promise<RoutingDecision> {
@@ -199,7 +201,33 @@ export async function determineRouting(
     return { type: 'ai_answer', answer: generatedAnswer };
   }
 
-  // 카테고리 기반 2차 분배 시도
+  // 1차: RAG 결과의 team 메타데이터에서 담당자 매칭
+  const teamFromRAG = extractTopTeamFromSources(ragResults);
+  if (teamFromRAG) {
+    const matchedAgent = await findAgentByTeam(teamFromRAG);
+    if (matchedAgent) {
+      return {
+        type: 'route_to_l2',
+        agentId: matchedAgent.id,
+        reason: `KB 유사 건 매칭: ${teamFromRAG}`,
+      };
+    }
+  }
+
+  // 2차: RAG 결과의 source_ticket_id로 이전 담당자 팀 조회
+  const teamFromTicketHistory = await findTeamFromSourceTickets(ragResults);
+  if (teamFromTicketHistory) {
+    const matchedAgent = await findAgentByTeam(teamFromTicketHistory);
+    if (matchedAgent) {
+      return {
+        type: 'route_to_l2',
+        agentId: matchedAgent.id,
+        reason: `이전 처리 이력 매칭: ${teamFromTicketHistory}`,
+      };
+    }
+  }
+
+  // 3차: LLM 의도 분석 결과로 fallback
   const matchedAgent = await findAgentByTeam(intentResult.team);
   if (matchedAgent) {
     return {
@@ -210,6 +238,110 @@ export async function determineRouting(
   }
 
   return { type: 'escalate_to_l1' };
+}
+
+/**
+ * RAG sources에서 가장 빈도 높은 team 추출
+ */
+function extractTopTeamFromSources(sources: RAGSource[]): string {
+  if (sources.length === 0) return '';
+
+  const teamCounts = new Map<string, number>();
+  for (const r of sources) {
+    const team = r.team;
+    if (team) {
+      teamCounts.set(team, (teamCounts.get(team) || 0) + 1);
+    }
+  }
+
+  if (teamCounts.size === 0) return '';
+
+  let topTeam = '';
+  let maxCount = 0;
+  for (const [team, count] of teamCounts) {
+    if (count > maxCount) {
+      maxCount = count;
+      topTeam = team;
+    }
+  }
+
+  return topTeam;
+}
+
+/**
+ * RAG 결과의 sourceId에서 ticket ID를 추출하고,
+ * 해당 티켓의 이전 담당자 팀을 DB에서 조회하여 가장 빈도 높은 팀 반환
+ */
+async function findTeamFromSourceTickets(sources: RAGSource[]): Promise<string | null> {
+  // sourceId에서 ticket ID 패턴 추출 (kb-entry-{uuid} 또는 ticket-{number})
+  const kbEntryIds: string[] = [];
+  for (const s of sources) {
+    // S3 key 패턴: tickets/kb-entry-{uuid}.txt
+    const match = s.entryId.match(/kb-entry-([0-9a-f-]{36})/);
+    if (match) {
+      kbEntryIds.push(match[1]);
+    }
+  }
+
+  if (kbEntryIds.length === 0) {
+    // sourceId에서 직접 ticket 번호 추출 시도 (ticket-00834.txt 패턴)
+    const ticketNumbers: string[] = [];
+    for (const s of sources) {
+      const match = s.entryId.match(/ticket-(\d+)/);
+      if (match) {
+        ticketNumbers.push(match[1]);
+      }
+    }
+
+    if (ticketNumbers.length === 0) return null;
+
+    // ticket 번호로 DB에서 담당자 팀 조회 (seed 데이터 기반)
+    // seed 데이터는 ticket_number 패턴이 아니므로 직접 assignee 조회
+    return null;
+  }
+
+  // KB 엔트리의 source_ticket_id로 티켓 조회 → 담당자 팀 확인
+  const entries = await prisma.knowledgeBaseEntry.findMany({
+    where: { id: { in: kbEntryIds } },
+    select: { sourceTicketId: true },
+  });
+
+  const ticketIds = entries
+    .map((e) => e.sourceTicketId)
+    .filter((id): id is string => !!id);
+
+  if (ticketIds.length === 0) return null;
+
+  // 해당 티켓들의 담당자 팀 조회
+  const tickets = await prisma.ticket.findMany({
+    where: { id: { in: ticketIds }, assignedTo: { not: null } },
+    select: {
+      assignee: {
+        select: { team: { select: { name: true } } },
+      },
+    },
+  });
+
+  const teamCounts = new Map<string, number>();
+  for (const t of tickets) {
+    const teamName = t.assignee?.team?.name;
+    if (teamName) {
+      teamCounts.set(teamName, (teamCounts.get(teamName) || 0) + 1);
+    }
+  }
+
+  if (teamCounts.size === 0) return null;
+
+  let topTeam = '';
+  let maxCount = 0;
+  for (const [team, count] of teamCounts) {
+    if (count > maxCount) {
+      maxCount = count;
+      topTeam = team;
+    }
+  }
+
+  return topTeam || null;
 }
 
 // ─── Private → Public 변환 ──────────────────────────────────
