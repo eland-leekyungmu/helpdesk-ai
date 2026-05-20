@@ -4,7 +4,7 @@ import { analyticsService } from '@/services/analytics.service';
 import type { ApiResponse, TokenPayload } from '@/shared/types';
 
 /**
- * GET /api/analytics?type=resolution|routing|processing|cost|tickets|departments&from=&to=&groupBy=
+ * GET /api/analytics?type=resolution|routing|processing|cost|tickets|departments|organizations&from=&to=&groupBy=
  */
 export const GET = withRole(['admin', 'agent_l1'], async (request: NextRequest, _payload: TokenPayload) => {
   const { searchParams } = new URL(request.url);
@@ -42,6 +42,9 @@ export const GET = withRole(['admin', 'agent_l1'], async (request: NextRequest, 
       break;
     case 'departments':
       data = await analyticsService.getDepartmentStats(period);
+      break;
+    case 'organizations':
+      data = await analyticsService.getOrganizationStats(period);
       break;
     case 'trend': {
       const days = parseInt(searchParams.get('days') || '7');

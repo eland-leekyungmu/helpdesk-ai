@@ -252,6 +252,47 @@ export async function getLlmCostStats(period: "day" | "week" | "month" = "month"
   }
 }
 
+// --- Organization Stats ---
+
+export interface OrgStats {
+  organizations: {
+    id: string;
+    name: string;
+    ticketCount: number;
+    cost: number;
+    departments: { id: string; name: string; ticketCount: number; cost: number }[];
+  }[];
+}
+
+export async function getOrganizationStats(period: "day" | "week" | "month" = "month"): Promise<OrgStats> {
+  try {
+    const now = new Date();
+    let from: Date;
+
+    switch (period) {
+      case "day":
+        from = new Date(now);
+        from.setDate(from.getDate() - 1);
+        break;
+      case "week":
+        from = new Date(now);
+        from.setDate(from.getDate() - 7);
+        break;
+      case "month":
+      default:
+        from = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
+    }
+
+    const data = await request<any>(
+      `/api/analytics?type=organizations&from=${from.toISOString()}&to=${now.toISOString()}`
+    );
+    return { organizations: data.organizations || [] };
+  } catch {
+    return { organizations: [] };
+  }
+}
+
 // --- Attachments ---
 
 export interface UploadFileInfo {

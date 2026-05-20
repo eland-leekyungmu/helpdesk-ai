@@ -4,12 +4,12 @@ import { useState, useEffect } from "react";
 import { LlmCostStats } from "@/shared/types";
 import { Card, CardContent, CardHeader, SkeletonCard } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
-import { getLlmCostStats } from "@/lib/api";
+import { getLlmCostStats, getOrganizationStats, OrgStats } from "@/lib/api";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Cell,
+  ResponsiveContainer, Cell, PieChart, Pie,
 } from "recharts";
-import { DollarSign, Cpu, TrendingUp } from "lucide-react";
+import { DollarSign, Cpu, TrendingUp, Building2, ChevronDown, ChevronRight } from "lucide-react";
 
 const PERIOD_LABELS = {
   day:   "일별 (최근 24시간)",
@@ -17,18 +17,38 @@ const PERIOD_LABELS = {
   month: "월별 (이번 달)",
 } as const;
 const BAR_COLORS = ["#6366f1", "#8b5cf6", "#a78bfa", "#c4b5fd"];
+const PIE_COLORS = ["#6366f1", "#8b5cf6", "#a78bfa", "#c4b5fd", "#e0e7ff", "#4f46e5", "#7c3aed"];
 
 export default function StatisticsPage() {
   const [llmStats, setLlmStats] = useState<LlmCostStats | null>(null);
+  const [orgStats, setOrgStats] = useState<OrgStats | null>(null);
   const [period, setPeriod] = useState<"day" | "week" | "month">("week");
   const [loading, setLoading] = useState(true);
+  const [expandedOrgs, setExpandedOrgs] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setLoading(true);
-    getLlmCostStats(period).then((data) => { setLlmStats(data); setLoading(false); });
+    Promise.all([
+      getLlmCostStats(period),
+      getOrganizationStats(period),
+    ]).then(([llm, org]) => {
+      setLlmStats(llm);
+      setOrgStats(org);
+      setLoading(false);
+    });
   }, [period]);
 
+  const toggleOrg = (orgId: string) => {
+    setExpandedOrgs((prev) => {
+      const next = new Set(prev);
+      if (next.has(orgId)) next.delete(orgId);
+      else next.add(orgId);
+      return next;
+    });
+  };
+
   const maxCost = Math.max(...(llmStats?.byPeriod.map((d) => d.cost) ?? [1]));
+  const totalOrgTickets = orgStats?.organizations.reduce((s, o) => s + o.ticketCount, 0) ?? 0;
 
   return (
     <div className="animate-fade-in">
@@ -146,6 +166,98 @@ export default function StatisticsPage() {
                 </ResponsiveContainer>
               ) : (
                 <p className="text-sm text-gray-400 text-center py-8">비용 추이 데이터가 없습니다.</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Organization Stats */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Building2 size={16} className="text-indigo-500" />
+                <h2 className="text-sm font-semibold text-gray-800">조직별 문의 현황</h2>
+                {totalOrgTickets > 0 && (
+                  <span className="ml-auto text-xs text-gray-400">총 {totalOrgTickets}건</span>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {orgStats?.organizations && orgStats.organizations.length > 0 ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Pie Chart */}
+                  <div className="flex items-center justify-center">
+                    <ResponsiveContainer width="100%" height={220}>
+                      <PieChart>
+                        <Pie
+                          data={orgStats.organizations.filter((o) => o.ticketCount > 0).map((o) => ({
+                            name: o.name,
+                            value: o.ticketCount,
+                          }))}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={90}
+                          paddingAngle={2}
+                          dataKey="value"
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          labelLine={false}
+                        >
+                          {orgStats.organizations.filter((o) => o.ticketCount > 0).map((_, i) => (
+                            <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{ borderRadius: "12px", border: "1px solid #e5e7eb", fontSize: "12px" }}
+                          formatter={(v: unknown) => [`${v}건`, "문의"]}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Organization List */}
+                  <div className="space-y-2">
+                    {orgStats.organizations.map((org, i) => (
+                      <div key={org.id} className="border border-gray-100 rounded-xl overflow-hidden">
+                        <button
+                          onClick={() => toggleOrg(org.id)}
+                          className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="w-3 h-3 rounded-full"
+                              style={{ background: PIE_COLORS[i % PIE_COLORS.length] }}
+                            />
+                            <span className="text-sm font-medium text-gray-800">{org.name}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs text-gray-500">{org.ticketCount}건</span>
+                            <span className="text-sm font-semibold text-gray-900">${org.cost.toFixed(4)}</span>
+                            {org.departments.length > 0 && (
+                              expandedOrgs.has(org.id)
+                                ? <ChevronDown size={14} className="text-gray-400" />
+                                : <ChevronRight size={14} className="text-gray-400" />
+                            )}
+                          </div>
+                        </button>
+                        {expandedOrgs.has(org.id) && org.departments.length > 0 && (
+                          <div className="border-t border-gray-50 bg-gray-50/50 px-4 py-2 space-y-1">
+                            {org.departments.map((dept) => (
+                              <div key={dept.id} className="flex items-center justify-between py-1.5 px-3">
+                                <span className="text-xs text-gray-600">{dept.name}</span>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-xs text-gray-500">{dept.ticketCount}건</span>
+                                  <span className="text-xs font-medium text-gray-700">${dept.cost.toFixed(4)}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400 text-center py-8">조직별 데이터가 없습니다.</p>
               )}
             </CardContent>
           </Card>

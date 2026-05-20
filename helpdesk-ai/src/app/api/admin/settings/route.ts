@@ -1,25 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withRole } from '@/shared/middleware/auth';
+import { getAllConfigs, saveConfigs } from '@/services/config.service';
 import type { ApiResponse, TokenPayload } from '@/shared/types';
 
-// 설정은 간단한 key-value로 DB에 저장하거나 환경변수로 관리
-// 현재는 메모리 기반 (추후 DB 테이블 추가 가능)
-let settings = {
-  confidenceThreshold: 0.7,
-  autoAssignEnabled: true,
-  maxLoginAttempts: 5,
-  lockDurationMinutes: 30,
-};
-
 /**
- * GET /api/admin/settings - 현재 설정 조회
+ * GET /api/admin/settings - 현재 설정 조회 (DB에서 읽기)
  */
 export const GET = withRole(['admin'], async (_request: NextRequest, _payload: TokenPayload) => {
-  return NextResponse.json<ApiResponse>({ success: true, data: settings });
+  const configs = await getAllConfigs();
+  return NextResponse.json<ApiResponse>({
+    success: true,
+    data: {
+      confidenceThreshold: parseFloat(configs.confidence_threshold),
+      maxCategories: parseInt(configs.max_categories),
+    },
+  });
 });
 
 /**
- * PUT /api/admin/settings - 설정 변경
+ * PUT /api/admin/settings - 설정 변경 (DB에 저장, 5분 내 반영)
  */
 export const PUT = withRole(['admin'], async (request: NextRequest, _payload: TokenPayload) => {
   const body = await request.json();
@@ -32,20 +31,19 @@ export const PUT = withRole(['admin'], async (request: NextRequest, _payload: To
         { status: 400 },
       );
     }
-    settings.confidenceThreshold = val;
   }
 
-  if (body.autoAssignEnabled !== undefined) {
-    settings.autoAssignEnabled = Boolean(body.autoAssignEnabled);
-  }
+  await saveConfigs({
+    confidenceThreshold: body.confidenceThreshold,
+    maxCategories: body.maxCategories,
+  });
 
-  if (body.maxLoginAttempts !== undefined) {
-    settings.maxLoginAttempts = Number(body.maxLoginAttempts);
-  }
-
-  if (body.lockDurationMinutes !== undefined) {
-    settings.lockDurationMinutes = Number(body.lockDurationMinutes);
-  }
-
-  return NextResponse.json<ApiResponse>({ success: true, data: settings });
+  const updated = await getAllConfigs();
+  return NextResponse.json<ApiResponse>({
+    success: true,
+    data: {
+      confidenceThreshold: parseFloat(updated.confidence_threshold),
+      maxCategories: parseInt(updated.max_categories),
+    },
+  });
 });

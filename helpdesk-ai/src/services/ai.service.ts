@@ -25,14 +25,10 @@ import { CATEGORIES, ORGANIZATION_STRUCTURE } from '../shared/constants/categori
 
 // ─── 설정 ───────────────────────────────────────────────────
 
-const DEFAULT_CONFIDENCE_THRESHOLD = 0.8;
 const RAG_TOP_K = 10;
 const RAG_FALLBACK_MIN_RESULTS = 3;
 
-function getConfidenceThreshold(): number {
-  // TODO: DB 설정에서 읽어오기 (관리자 변경 가능)
-  return parseFloat(process.env.CONFIDENCE_THRESHOLD || String(DEFAULT_CONFIDENCE_THRESHOLD));
-}
+import { getConfidenceThreshold as getConfidenceThresholdFromDB } from './config.service';
 
 // ─── 모델 라우팅 ────────────────────────────────────────────
 
@@ -197,7 +193,7 @@ export async function determineRouting(
   intentResult: IntentResult,
   generatedAnswer: string,
 ): Promise<RoutingDecision> {
-  const threshold = getConfidenceThreshold();
+  const threshold = await getConfidenceThresholdFromDB();
 
   if (confidence >= threshold) {
     return { type: 'ai_answer', answer: generatedAnswer };
@@ -471,21 +467,27 @@ function parseIntentResponse(content: string): IntentResult {
   try {
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      return { department: '', team: '', categories: ['계정/권한 관리'] };
+      return { department: '', team: '', categories: ['기타'] };
     }
     const parsed = JSON.parse(jsonMatch[0]);
-    const categories: string[] = Array.isArray(parsed.categories) ? parsed.categories : ['계정/권한 관리'];
 
-    // '기타' 카테고리가 포함된 경우 제거하고, 남은 카테고리가 없으면 '계정/권한 관리'로 대체
-    const filtered = categories.filter((c) => c !== '기타');
-    const finalCategories = filtered.length > 0 ? filtered : ['계정/권한 관리'];
+    const department = parsed.department || '';
+    const team = parsed.team || '';
+    const categories: string[] = Array.isArray(parsed.categories) ? parsed.categories : ['기타'];
 
-    return {
-      department: parsed.department || '',
-      team: parsed.team || '',
-      categories: finalCategories,
-    };
+    // 팀 유효성 검증: ORGANIZATION_STRUCTURE에 존재하는 팀인지 확인
+    const validTeam = ORGANIZATION_STRUCTURE.some(
+      (dept: { department: string; teams: readonly string[] }) =>
+        dept.department === department && dept.teams.includes(team),
+    );
+
+    if (!validTeam && team) {
+      // 유효하지 않은 팀이면 빈 값으로 (1차 처리자 큐로 감)
+      return { department: '', team: '', categories };
+    }
+
+    return { department, team, categories };
   } catch {
-    return { department: '', team: '', categories: ['계정/권한 관리'] };
+    return { department: '', team: '', categories: ['기타'] };
   }
 }

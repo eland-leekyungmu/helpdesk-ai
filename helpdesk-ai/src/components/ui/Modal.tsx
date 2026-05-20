@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 interface ModalProps {
@@ -20,6 +21,12 @@ const sizeClass = {
 
 export function Modal({ open, onClose, title, children, size = "md", hideClose }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+
+  // 클라이언트 마운트 확인 (SSR 안전)
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // ESC 키 닫기
   useEffect(() => {
@@ -41,12 +48,12 @@ export function Modal({ open, onClose, title, children, size = "md", hideClose }
     return () => { document.body.style.overflow = ""; };
   }, [open]);
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
-  return (
+  return createPortal(
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
       onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >
       {/* Backdrop */}
@@ -83,7 +90,8 @@ export function Modal({ open, onClose, title, children, size = "md", hideClose }
         )}
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

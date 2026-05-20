@@ -209,6 +209,91 @@ export class AnalyticsService {
   }
 
   /**
+   * 조직(법인)별 통계 - 법인 > 부서 단위로 문의 건수 + LLM 비용 집계
+   */
+  async getOrganizationStats(period: DateRange): Promise<{
+    organizations: {
+      id: string;
+      name: string;
+      ticketCount: number;
+      cost: number;
+      departments: { id: string; name: string; ticketCount: number; cost: number }[];
+    }[];
+  }> {
+    const orgs = await prisma.organization.findMany({
+      where: { isActive: true },
+      include: {
+        departments: {
+          where: { isActive: true },
+          include: {
+            teams: {
+              where: { isActive: true },
+              include: {
+                users: { select: { id: true } },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    const organizations = [];
+
+    for (const org of orgs) {
+      let orgTicketCount = 0;
+      let orgCost = 0;
+      const departments = [];
+
+      for (const dept of org.departments) {
+        const userIds = dept.teams.flatMap((t) => t.users.map((u) => u.id));
+        if (userIds.length === 0) {
+          departments.push({ id: dept.id, name: dept.name, ticketCount: 0, cost: 0 });
+          continue;
+        }
+
+        // 해당 부서 사용자들이 요청한 티켓
+        const tickets = await prisma.ticket.findMany({
+          where: {
+            requesterId: { in: userIds },
+            createdAt: { gte: period.from, lte: period.to },
+          },
+          select: { id: true },
+        });
+
+        const ticketIds = tickets.map((t) => t.id);
+        let deptCost = 0;
+
+        if (ticketIds.length > 0) {
+          // 해당 티켓들에 대한 LLM 비용 합산
+          const costResult = await prisma.llmUsageLog.aggregate({
+            where: {
+              ticketId: { in: ticketIds },
+              createdAt: { gte: period.from, lte: period.to },
+            },
+            _sum: { costUsd: true },
+          });
+          deptCost = Number(costResult._sum.costUsd || 0);
+        }
+
+        orgTicketCount += tickets.length;
+        orgCost += deptCost;
+        departments.push({ id: dept.id, name: dept.name, ticketCount: tickets.length, cost: Math.round(deptCost * 1000000) / 1000000 });
+      }
+
+      organizations.push({
+        id: org.id,
+        name: org.name,
+        ticketCount: orgTicketCount,
+        cost: Math.round(orgCost * 1000000) / 1000000,
+        departments,
+      });
+    }
+
+    return { organizations };
+  }
+
+  /**
    * 일별 티켓 추이 (최근 N일)
    */
   async getDailyTrend(days: number = 7): Promise<{ date: string; 접수: number; 해결: number }[]> {

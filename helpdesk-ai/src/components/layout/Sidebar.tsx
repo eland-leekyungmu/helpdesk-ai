@@ -160,7 +160,7 @@ export function Sidebar({ role, userName }: SidebarProps) {
     <>
       {/* Desktop Sidebar */}
       <aside
-        className={`hidden md:flex flex-col shrink-0 transition-all duration-300 ease-in-out h-screen sticky top-0 ${expanded ? "w-56" : "w-16"}`}
+        className={`hidden md:flex flex-col shrink-0 transition-all duration-300 ease-in-out h-screen sticky top-0 z-10 ${expanded ? "w-56" : "w-16"}`}
       >
         <div className={`flex flex-col h-full bg-gradient-to-b ${roleAccent[role]} text-white`}>
           {/* Logo */}
