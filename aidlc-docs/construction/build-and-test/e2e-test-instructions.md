@@ -147,3 +147,28 @@
 [ ] SC-09: 관리자 사용자/조직 관리
 [ ] SC-10: KB 재색인
 ```
+
+---
+
+## 미테스트 항목: 이메일 인바운드 (SES)
+
+### 구현 상태
+- ✅ `src/services/email.service.ts` — 이메일 파싱 및 티켓 생성/스레드 매칭 로직
+- ✅ `src/app/api/webhooks/ses-inbound/route.ts` — SES 인바운드 Webhook 엔드포인트
+- ✅ `src/repositories/email-thread.repository.ts` — 이메일 스레드 관리
+- ✅ `infra/modules/ses/` — SES 도메인 인증 Terraform
+- ✅ `infra/modules/ses-inbound/` — SES 인바운드 수신 규칙 Terraform
+
+### 미테스트 사유
+- SES 도메인 인증(DNS MX 레코드) 미완료
+- SES 샌드박스 환경에서 인바운드 수신 테스트 불가
+- 실제 이메일 수신 → S3 저장 → Lambda/Webhook 트리거 파이프라인은 프로덕션 배포 후 검증 예정
+
+### 테스트 시나리오 (프로덕션 배포 후)
+
+| # | 시나리오 | 기대 결과 |
+|---|----------|-----------|
+| 1 | 신규 이메일 수신 | 티켓 자동 생성 + AI 응답 |
+| 2 | 기존 티켓에 회신 (In-Reply-To 헤더) | 기존 티켓에 메시지 추가 |
+| 3 | 최종 답변 후 재문의 | AI 미개입, 이전 2차 처리자에게 재분배 |
+| 4 | 첨부파일 포함 이메일 | S3 저장 + 티켓에 첨부 연결 |

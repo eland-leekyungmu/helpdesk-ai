@@ -133,3 +133,20 @@ infra/
 | `npm start` | 프로덕션 서버 실행 |
 | `npm test` | 단위 테스트 실행 |
 | `npm run lint` | ESLint 검사 |
+
+---
+
+## AI-DLC 개발 방법론
+
+본 프로젝트는 **AI-DLC(AI-Driven Development Life Cycle)** 방법론으로 개발되었습니다.
+
+- **설계 산출물**: `aidlc-docs/` 디렉토리 참조
+- **진행 상태**: `aidlc-docs/aidlc-state.md`
+- **의사결정 로그**: `aidlc-docs/audit.md`
+- **사용 도구**: Kiro IDE + Claude (코드 생성, 설계, 테스트)
+- **런타임 AI**: AWS Bedrock (Claude Sonnet 4) + Knowledge Base (RAG)
+
+### 개발 단계
+1. INCEPTION: 요구사항 → 유저스토리 → 설계 → 유닛 분할
+2. CONSTRUCTION: 기능설계 → NFR → 인프라 → 코드 생성 → 빌드/테스트
+3. POST Build-and-Test: 버그 수정 및 기능 개선 (미니 사이클)
