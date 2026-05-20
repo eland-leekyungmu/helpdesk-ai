@@ -85,7 +85,7 @@ resource "aws_ecs_task_definition" "main" {
       environment = [
         { name = "NODE_ENV", value = "production" },
         { name = "PORT", value = tostring(var.container_port) },
-        { name = "AWS_REGION", value = "ap-northeast-2" },
+        { name = "AWS_REGION", value = "us-east-1" },
         { name = "BEDROCK_REGION", value = "us-east-1" },
       ]
 
@@ -93,7 +93,7 @@ resource "aws_ecs_task_definition" "main" {
         logDriver = "awslogs"
         options = {
           "awslogs-group"         = var.log_group_name
-          "awslogs-region"        = "ap-northeast-2"
+          "awslogs-region"        = "us-east-1"
           "awslogs-stream-prefix" = "ecs"
         }
       }

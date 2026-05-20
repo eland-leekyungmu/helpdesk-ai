@@ -4,10 +4,10 @@
 
 # S3 Bucket for raw email storage (us-east-1)
 resource "aws_s3_bucket" "email_storage" {
-  bucket = "${var.project_name}-emails-${var.environment}"
+  bucket = "${var.project_name}-emails-${var.environment}-use1"
 
   tags = {
-    Name    = "${var.project_name}-emails-${var.environment}"
+    Name    = "${var.project_name}-emails-${var.environment}-use1"
     Purpose = "SES inbound email storage"
   }
 }
@@ -79,7 +79,7 @@ resource "aws_lambda_function" "email_forwarder" {
   environment {
     variables = {
       TARGET_SQS_URL    = var.target_sqs_url
-      TARGET_SQS_REGION = "ap-northeast-2"
+      TARGET_SQS_REGION = "us-east-1"
       EMAIL_BUCKET      = aws_s3_bucket.email_storage.id
     }
   }
@@ -178,5 +178,5 @@ resource "aws_route53_record" "mx" {
   name    = var.inbound_domain
   type    = "MX"
   ttl     = 600
-  records = ["10 inbound-smtp.ap-northeast-2.amazonaws.com"]
+  records = ["10 inbound-smtp.us-east-1.amazonaws.com"]
 }

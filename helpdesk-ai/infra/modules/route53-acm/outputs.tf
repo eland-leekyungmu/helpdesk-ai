@@ -14,6 +14,6 @@ output "certificate_arn" {
 }
 
 output "certificate_validated_arn" {
-  description = "Validated ACM certificate ARN"
-  value       = aws_acm_certificate_validation.main.certificate_arn
+  description = "ACM certificate ARN (validation pending — use after DNS propagation)"
+  value       = aws_acm_certificate.main.arn
 }

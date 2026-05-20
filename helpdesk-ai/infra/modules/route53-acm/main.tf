@@ -45,10 +45,11 @@ resource "aws_route53_record" "acm_validation" {
   allow_overwrite = true
 }
 
-resource "aws_acm_certificate_validation" "main" {
-  certificate_arn         = aws_acm_certificate.main.arn
-  validation_record_fqdns = [for record in aws_route53_record.acm_validation : record.fqdn]
-}
+# ACM validation — DNS 전파 완료 후 주석 해제하여 재적용
+# resource "aws_acm_certificate_validation" "main" {
+#   certificate_arn         = aws_acm_certificate.main.arn
+#   validation_record_fqdns = [for record in aws_route53_record.acm_validation : record.fqdn]
+# }
 
 # =============================================================
 # ALB Alias Record (A record)

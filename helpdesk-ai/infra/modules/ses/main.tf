@@ -38,8 +38,8 @@ resource "aws_route53_record" "ses_verification" {
   records = [aws_ses_domain_identity.main.verification_token]
 }
 
-resource "aws_ses_domain_identity_verification" "main" {
-  domain = aws_ses_domain_identity.main.id
-
-  depends_on = [aws_route53_record.ses_verification]
-}
+# SES domain identity verification 제거 — DNS 전파 후 수동 확인
+# resource "aws_ses_domain_identity_verification" "main" {
+#   domain = aws_ses_domain_identity.main.id
+#   depends_on = [aws_route53_record.ses_verification]
+# }

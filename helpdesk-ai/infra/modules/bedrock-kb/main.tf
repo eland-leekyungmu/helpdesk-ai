@@ -7,10 +7,10 @@ data "aws_region" "current" {}
 
 # S3 Bucket for KB data source
 resource "aws_s3_bucket" "kb_data" {
-  bucket = "${var.project_name}-kb-docs-${var.environment}"
+  bucket = "${var.project_name}-kb-docs-${var.environment}-use1"
 
   tags = {
-    Name    = "${var.project_name}-kb-docs-${var.environment}"
+    Name    = "${var.project_name}-kb-docs-${var.environment}-use1"
     Purpose = "Bedrock Knowledge Base data source"
   }
 }

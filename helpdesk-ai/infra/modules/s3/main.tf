@@ -21,10 +21,10 @@ locals {
 resource "aws_s3_bucket" "main" {
   for_each = local.buckets
 
-  bucket = "${var.project_name}-${each.key}-${var.environment}"
+  bucket = "${var.project_name}-${each.key}-${var.environment}-use1"
 
   tags = {
-    Name    = "${var.project_name}-${each.key}-${var.environment}"
+    Name    = "${var.project_name}-${each.key}-${var.environment}-use1"
     Purpose = each.value.purpose
   }
 }
@@ -74,7 +74,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "logs" {
 
 # =============================================================
 # ALB Logs Bucket Policy (ELB service principal)
-# ap-northeast-2 ELB account ID: 600734575887
+# us-east-1 ELB account ID: 127311923021
 # =============================================================
 data "aws_caller_identity" "current" {}
 
@@ -87,7 +87,7 @@ resource "aws_s3_bucket_policy" "alb_logs" {
       {
         Effect = "Allow"
         Principal = {
-          AWS = "arn:aws:iam::600734575887:root"
+          AWS = "arn:aws:iam::127311923021:root"
         }
         Action   = "s3:PutObject"
         Resource = "${aws_s3_bucket.main["alb-logs"].arn}/alb/AWSLogs/${data.aws_caller_identity.current.account_id}/*"

@@ -16,5 +16,5 @@ variable "opensearch_collection_arn" {
 variable "embedding_model_arn" {
   description = "Bedrock embedding model ARN"
   type        = string
-  default     = "arn:aws:bedrock:ap-northeast-2::foundation-model/amazon.titan-embed-text-v2:0"
+  default     = "arn:aws:bedrock:us-east-1::foundation-model/amazon.titan-embed-text-v2:0"
 }

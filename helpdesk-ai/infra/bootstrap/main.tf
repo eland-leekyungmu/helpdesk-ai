@@ -27,7 +27,7 @@ provider "aws" {
 # S3 Bucket for Terraform State
 # =============================================================
 resource "aws_s3_bucket" "tfstate" {
-  bucket = "${var.project_name}-tfstate-${var.environment}"
+  bucket = "${var.project_name}-tfstate-${var.environment}-use1"
 
   lifecycle {
     prevent_destroy = true
