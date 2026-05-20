@@ -491,4 +491,3 @@ function parseIntentResponse(content: string): IntentResult {
     return { department: '', team: '', categories: ['기타'] };
   }
 }
-
