@@ -9,6 +9,7 @@ import { CATEGORY_TEAM_MAP } from '../../src/shared/constants/categories';
 const MODEL_ID = 'anthropic.claude-3-haiku-20240307-v1:0';
 const REGION = 'us-east-1';
 const CONCURRENCY = 5; // 동시 호출 수
+const BATCH_PER_CALL = 5; // 1회 LLM 호출당 생성 건수
 const TARGET = parseInt(process.argv[2] || '200', 10);
 const OUTPUT_FILE = process.argv[3] || 'data/generated-fast.json';
 
@@ -82,7 +83,7 @@ function getL2Agent(category: string) {
 async function invokeHaiku(prompt: string): Promise<string> {
   const body = JSON.stringify({
     anthropic_version: 'bedrock-2023-05-31',
-    max_tokens: 2048,
+    max_tokens: 4096,
     temperature: 0.8,
     messages: [{ role: 'user', content: prompt }],
   });
@@ -98,14 +99,30 @@ async function invokeHaiku(prompt: string): Promise<string> {
   return result.content?.[0]?.text || '';
 }
 
-function parseJson(content: string): Record<string, unknown> | null {
+function parseJson(content: string): Record<string, unknown>[] | null {
   try {
-    const m = content.match(/\{[\s\S]*\}/);
-    if (m) return JSON.parse(m[0]);
+    // 배열 형태 파싱 시도
+    const arrMatch = content.match(/\[[\s\S]*\]/);
+    if (arrMatch) {
+      const parsed = JSON.parse(arrMatch[0]);
+      if (Array.isArray(parsed)) return parsed;
+    }
   } catch {}
   try {
+    const arrMatch = content.match(/\[[\s\S]*\]/);
+    if (arrMatch) {
+      const cleaned = arrMatch[0].replace(/\r\n/g, '\\n').replace(/\n/g, '\\n');
+      const parsed = JSON.parse(cleaned);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {}
+  // 단일 객체 fallback
+  try {
     const m = content.match(/\{[\s\S]*\}/);
-    if (m) return JSON.parse(m[0].replace(/\r\n/g, '\\n').replace(/\n/g, '\\n'));
+    if (m) {
+      const parsed = JSON.parse(m[0]);
+      return [parsed];
+    }
   } catch {}
   try {
     const m = content.match(/\{[\s\S]*\}/);
@@ -119,28 +136,29 @@ function parseJson(content: string): Record<string, unknown> | null {
         if (inStr && (c === '\n' || c === '\r')) { r += '\\n'; if (c === '\r' && m[0][i+1] === '\n') i++; continue; }
         r += c;
       }
-      return JSON.parse(r);
+      const parsed = JSON.parse(r);
+      return [parsed];
     }
   } catch {}
   return null;
 }
 
 async function main() {
-  console.log(`=== 고속 생성 (Haiku 3.5, 병렬 ${CONCURRENCY}) ===`);
+  console.log(`=== 고속 생성 (Haiku 3.5, 병렬 ${CONCURRENCY}, 호출당 ${BATCH_PER_CALL}건) ===`);
   console.log(`목표: ${TARGET}건 → ${OUTPUT_FILE}\n`);
 
   const entries: KBEntry[] = [];
   let calls = 0;
 
   while (entries.length < TARGET) {
-    const batch = Math.min(CONCURRENCY, TARGET - entries.length);
-    const promises = Array.from({ length: batch }, () => generateOne());
+    const batch = Math.min(CONCURRENCY, Math.ceil((TARGET - entries.length) / BATCH_PER_CALL));
+    const promises = Array.from({ length: batch }, () => generateBatch());
     const results = await Promise.allSettled(promises);
 
     for (const r of results) {
       calls++;
       if (r.status === 'fulfilled' && r.value) {
-        entries.push(r.value);
+        entries.push(...r.value);
       }
     }
 
@@ -168,55 +186,77 @@ async function main() {
   console.log(`파일: ${OUTPUT_FILE}`);
 }
 
-async function generateOne(): Promise<KBEntry | null> {
-  let scenario = pickScenario();
-  let catCtx = pickRandom(CATEGORIES_WITH_CONTEXT);
-  const requester = pickRandom(seedUsers.requesters);
-  const agent_l1 = pickRandom(seedUsers.serviceDesk.members);
+async function generateBatch(): Promise<KBEntry[]> {
+  const items: { scenario: string; catCtx: typeof CATEGORIES_WITH_CONTEXT[0]; requester: any; agent_l1: any; agent_l2: any }[] = [];
 
-  let agent_l2 = null;
-  if (scenario !== 'l1_resolved') {
-    const l2Cats = CATEGORIES_WITH_CONTEXT.filter(c => { const m = CATEGORY_TEAM_MAP[c.category]; return m && m.department && m.team; });
-    catCtx = pickRandom(l2Cats);
-    agent_l2 = getL2Agent(catCtx.category);
-    if (!agent_l2) scenario = 'l1_resolved';
+  for (let i = 0; i < BATCH_PER_CALL; i++) {
+    let scenario = pickScenario();
+    let catCtx = pickRandom(CATEGORIES_WITH_CONTEXT);
+    const requester = pickRandom(seedUsers.requesters);
+    const agent_l1 = pickRandom(seedUsers.serviceDesk.members);
+
+    let agent_l2 = null;
+    if (scenario !== 'l1_resolved') {
+      const l2Cats = CATEGORIES_WITH_CONTEXT.filter(c => { const m = CATEGORY_TEAM_MAP[c.category]; return m && m.department && m.team; });
+      catCtx = pickRandom(l2Cats);
+      agent_l2 = getL2Agent(catCtx.category);
+      if (!agent_l2) scenario = 'l1_resolved';
+    }
+
+    items.push({ scenario, catCtx, requester, agent_l1, agent_l2 });
   }
 
-  const scenarioGuidance = scenario === 'l1_resolved'
-    ? '[1차-단순문의] 비밀번호 초기화, 계정 잠금 해제, 그룹메일 변경, 접속 방법, 매뉴얼 안내, 연락처 안내'
-    : '[2차-전문기술] 시스템 설정 변경, 코드 수정, 마스터 데이터 조작, 서버 조치, DB 수정';
+  const ticketDescriptions = items.map((item, idx) => {
+    const scenarioGuidance = item.scenario === 'l1_resolved'
+      ? '1차해결(단순문의: 비밀번호 초기화, 계정 잠금 해제, 그룹메일 변경, 접속 방법 안내 등)'
+      : '2차해결(전문기술: 시스템 설정 변경, 코드 수정, 마스터 데이터 조작, 서버 조치, DB 수정 등)';
+    const l2Info = item.agent_l2 ? ` 2차담당:${item.agent_l2.name}` : '';
+    return `티켓${idx + 1}: ${scenarioGuidance} | 카테고리:${item.catCtx.category} | 맥락:${item.catCtx.context} | 요청자:${item.requester.name}(${item.requester.company}) | 1차담당:${item.agent_l1.name}${l2Info}`;
+  }).join('\n');
 
-  const l2Info = agent_l2 ? `2차: ${agent_l2.name} (${agent_l2.department}, ${agent_l2.team})` : '';
-  const jsonFmt = scenario === 'l1_resolved'
-    ? '{"subject":"제목","question":"문의","answer":"답변","tags":["태그"]}'
-    : '{"subject":"제목","question":"문의","internal_note":"내부메모","l2_response":"2차답변","answer":"최종답변","tags":["태그"]}';
+  const prompt = `한국 대기업 IT Help Desk 티켓 ${BATCH_PER_CALL}건을 생성해줘. 각 티켓은 실제 업무에서 발생하는 구체적이고 현실적인 문의여야 함.
 
-  const prompt = `IT Help Desk 티켓 1건. ${scenarioGuidance}
-요청자:${requester.name}(${requester.company}) 1차:${agent_l1.name} ${l2Info}
-카테고리:${catCtx.category}|${catCtx.context}
-JSON한줄(줄바꿈은\\n): ${jsonFmt}`;
+규칙:
+- subject: 구체적인 문의 제목 (예: "SAP 발주 전표 ME21N 오류", "VPN 연결 후 속도 저하")
+- question: 요청자가 작성한 실제 문의 내용 (구체적 상황, 오류 메시지, 시도한 내용 포함. 3~5문장)
+- answer: 담당자의 상세한 해결 답변 (단계별 안내, 조치 내용 포함. 5~10문장)
+- 1차해결 티켓: subject, question, answer, tags만 포함
+- 2차해결 티켓: subject, question, internal_note(1차→2차 이관 메모), l2_response(2차 담당자 기술 답변), answer(최종 답변), tags 포함
+- tags: 관련 키워드 3~5개
+
+각 티켓 조건:
+${ticketDescriptions}
+
+JSON 배열만 출력. 줄바꿈은 \\n으로 이스케이프. 메타데이터를 그대로 복사하지 말고 실제 IT문의 내용을 창작해.
+[{...},{...},...]`;
 
   try {
     const content = await invokeHaiku(prompt);
-    const parsed = parseJson(content);
-    if (!parsed) return null;
+    const parsedArr = parseJson(content);
+    if (!parsedArr || parsedArr.length === 0) return [];
 
-    return {
-      subject: (parsed.subject as string) || '',
-      question: (parsed.question as string) || '',
-      internal_note: (parsed.internal_note as string) || null,
-      l2_response: (parsed.l2_response as string) || null,
-      answer: (parsed.answer as string) || '',
-      category: catCtx.category,
-      department: agent_l2?.department || '',
-      team: agent_l2?.team || '',
-      tags: (parsed.tags as string[]) || [],
-      resolution_type: scenario,
-      requester: { name: requester.name, email: requester.email, company: requester.company },
-      agent_l1: { name: agent_l1.name, email: agent_l1.email },
-      agent_l2: agent_l2 ? { name: agent_l2.name, email: agent_l2.email, department: agent_l2.department, team: agent_l2.team } : null,
-    };
-  } catch { return null; }
+    const results: KBEntry[] = [];
+    for (let i = 0; i < parsedArr.length && i < items.length; i++) {
+      const parsed = parsedArr[i];
+      const item = items[i];
+      results.push({
+        subject: (parsed.subject as string) || '',
+        question: (parsed.question as string) || '',
+        internal_note: (parsed.internal_note as string) || null,
+        l2_response: (parsed.l2_response as string) || null,
+        answer: (parsed.answer as string) || '',
+        category: item.catCtx.category,
+        department: item.agent_l2?.department || '',
+        team: item.agent_l2?.team || '',
+        tags: (parsed.tags as string[]) || [],
+        resolution_type: item.scenario,
+        requester: { name: item.requester.name, email: item.requester.email, company: item.requester.company },
+        agent_l1: { name: item.agent_l1.name, email: item.agent_l1.email },
+        agent_l2: item.agent_l2 ? { name: item.agent_l2.name, email: item.agent_l2.email, department: item.agent_l2.department, team: item.agent_l2.team } : null,
+      });
+    }
+    return results;
+  } catch { return []; }
 }
 
 main().catch(e => { console.error('Fatal:', e); process.exit(1); });
