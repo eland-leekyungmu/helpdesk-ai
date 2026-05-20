@@ -69,7 +69,7 @@ export class FeedbackService {
       },
     });
 
-    if (!ticket || ticket.status !== 'resolved') return;
+    if (!ticket || !['resolved', 'closed'].includes(ticket.status)) return;
 
     // 첫 번째 메시지 = 질문, 마지막 public 메시지 = 답변
     const question = ticket.messages[0]?.content;
