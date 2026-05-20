@@ -1,9 +1,8 @@
 # =============================================================
-# Random Password for RDS Master
+# RDS Master Password (고정값 - 변경 시 Secrets Manager도 함께 업데이트 필요)
 # =============================================================
-resource "random_password" "master" {
-  length  = 32
-  special = false
+locals {
+  db_password = "Qwer1234!"
 }
 
 # =============================================================
@@ -86,7 +85,7 @@ resource "aws_db_instance" "main" {
 
   db_name  = var.db_name
   username = "helpdesk_admin"
-  password = random_password.master.result
+  password = local.db_password
 
   multi_az               = var.multi_az
   db_subnet_group_name   = aws_db_subnet_group.main.name
@@ -102,6 +101,10 @@ resource "aws_db_instance" "main" {
   deletion_protection       = var.environment != "dev"
 
   publicly_accessible = true
+
+  lifecycle {
+    ignore_changes = [password]
+  }
 
   tags = {
     Name = "${var.project_name}-rds-${var.environment}"

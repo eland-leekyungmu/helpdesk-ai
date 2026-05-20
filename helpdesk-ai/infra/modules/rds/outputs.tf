@@ -25,7 +25,7 @@ output "username" {
 
 output "password" {
   description = "Master password"
-  value       = random_password.master.result
+  value       = local.db_password
   sensitive   = true
 }
 
